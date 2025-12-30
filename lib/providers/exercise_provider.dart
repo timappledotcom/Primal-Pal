@@ -39,6 +39,18 @@ class ExerciseProvider extends ChangeNotifier {
 
     if (storedExercises != null && storedExercises.isNotEmpty) {
       _exercises = storedExercises;
+
+      // Check for new exercises in seed data and add them
+      final seedExercises = ExerciseData.getSeedExercises();
+      final existingIds = _exercises.map((e) => e.id).toSet();
+
+      final newExercises =
+          seedExercises.where((e) => !existingIds.contains(e.id)).toList();
+
+      if (newExercises.isNotEmpty) {
+        _exercises.addAll(newExercises);
+        await _storageService.saveExercises(_exercises);
+      }
     } else {
       // First launch - use seed data
       _exercises = ExerciseData.getSeedExercises();
