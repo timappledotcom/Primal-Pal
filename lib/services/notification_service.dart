@@ -346,4 +346,55 @@ class NotificationService {
     // Return updated scheduled exercise
     return scheduled.snooze(snoozeMinutes);
   }
+
+  // ============ SPRINT NOTIFICATIONS ============
+
+  /// Schedule a sprint notification for today (if sprint day)
+  Future<void> scheduleSprintNotification(SprintSession sprint) async {
+    if (!sprint.isToday || sprint.completed) return;
+
+    final androidDetails = AndroidNotificationDetails(
+      'sprint_sessions',
+      'Sprint Sessions',
+      channelDescription: 'Notifications for sprint session reminders',
+      importance: Importance.high,
+      priority: Priority.high,
+      ticker: 'Sprint day!',
+      icon: '@mipmap/ic_launcher',
+    );
+
+    final notificationDetails = NotificationDetails(android: androidDetails);
+
+    // Schedule for 9 AM on sprint day
+    final now = DateTime.now();
+    var scheduledTime = DateTime(now.year, now.month, now.day, 9, 0);
+    
+    // If it's already past 9 AM, show immediately
+    if (now.isAfter(scheduledTime)) {
+      await _notifications.show(
+        900, // Sprint notification ID
+        '🏃 Sprint Day!',
+        'Today is your sprint session. Get ready to run!',
+        notificationDetails,
+        payload: 'sprint_${sprint.date.toIso8601String()}',
+      );
+    } else {
+      await _notifications.zonedSchedule(
+        900,
+        '🏃 Sprint Day!',
+        'Today is your sprint session. Get ready to run!',
+        tz.TZDateTime.from(scheduledTime, tz.local),
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: 'sprint_${sprint.date.toIso8601String()}',
+      );
+    }
+
+    debugPrint('Scheduled sprint notification for today');
+  }
+
+  /// Cancel sprint notification
+  Future<void> cancelSprintNotification() async {
+    await _notifications.cancel(900);
+  }
 }

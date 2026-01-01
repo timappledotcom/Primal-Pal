@@ -221,17 +221,6 @@ class ExerciseData {
             'Adductor Stretch: Wide stance, shift weight to one side, hold 30 seconds.',
       ),
       Exercise(
-        id: 'single_leg_glute_bridge',
-        name: 'Single-Leg Glute Bridge',
-        description:
-            'Lying on back, one foot on floor, driving hips up. Excellent for glute isolation.',
-        type: ExerciseType.strength,
-        currentReps: defaultStartingReps, // Per leg
-        isBilateral: true,
-        relatedStretch:
-            'Figure-4 Stretch: Ankle on opposite knee, pull knee toward chest.',
-      ),
-      Exercise(
         id: 'bulgarian_split_squat',
         name: 'Bulgarian Split Squat',
         description:
@@ -254,16 +243,6 @@ class ExerciseData {
             'Standing Hamstring Stretch: Foot on low surface, lean forward.',
       ),
       Exercise(
-        id: 'duck_walk',
-        name: 'Duck Walk',
-        description:
-            'Walking while in a full squat position. Great for ankle mobility.',
-        type: ExerciseType.strength,
-        currentReps: 10, // Steps
-        relatedStretch:
-            'Deep Squat Hold: Rest in bottom squat position for 30 seconds.',
-      ),
-      Exercise(
         id: 'calf_raises',
         name: 'Calf Raises',
         description: 'Standing on a flat floor or a stair step.',
@@ -272,16 +251,6 @@ class ExerciseData {
         relatedStretch:
             'Wall Calf Stretch: Hands on wall, one leg back, heel down.',
       ),
-      Exercise(
-        id: 'broad_jump',
-        name: 'Broad Jump',
-        description:
-            'Exploring explosive power. Jump forward for distance, land softly.',
-        type: ExerciseType.strength,
-        currentReps: 3,
-        relatedStretch: 'Dynamic Leg Swings: Forward and back, 10 each leg.',
-      ),
-
       // ===== UPPER BODY PUSH =====
       Exercise(
         id: 'standard_pushup',
@@ -350,37 +319,6 @@ class ExerciseData {
         relatedStretch:
             'Child\'s Pose: Sit back on heels, arms extended, breathe deeply.',
       ),
-      Exercise(
-        id: 'prone_ywt',
-        name: 'Prone Y-W-T Raises',
-        description:
-            'Lying on stomach, moving arms into Y, W, and T shapes to fire the rhomboids and rear delts.',
-        type: ExerciseType.strength,
-        currentReps: 3, // Full Y-W-T sequences
-        relatedStretch:
-            'Cross-Body Shoulder Stretch: Pull arm across chest, hold 20 seconds each.',
-      ),
-      Exercise(
-        id: 'bear_crawl',
-        name: 'Bear Crawl',
-        description:
-            'Walking on hands and toes. Builds shoulder stability and core strength.',
-        type: ExerciseType.strength,
-        currentReps: 10, // Steps
-        relatedStretch:
-            'Downward Dog: Hands and feet on floor, hips high, hold 30 seconds.',
-      ),
-      Exercise(
-        id: 'crab_walk',
-        name: 'Crab Walk',
-        description:
-            'Walking on hands and feet with chest facing up. Opens the chest/shoulders.',
-        type: ExerciseType.strength,
-        currentReps: 10, // Steps
-        relatedStretch:
-            'Chest Opener: Clasp hands behind back, lift and squeeze.',
-      ),
-
       // ===== CORE & MIDLINE STABILITY =====
       Exercise(
         id: 'standard_plank',
@@ -403,17 +341,6 @@ class ExerciseData {
             'Side Lying Stretch: Reach arm overhead, elongate the side body.',
       ),
       Exercise(
-        id: 'dead_bug',
-        name: 'Dead Bug',
-        description:
-            'Lying on back, moving opposite arm and leg while keeping the lower back glued to the floor.',
-        type: ExerciseType.strength,
-        currentReps: defaultStartingReps, // Per side
-        isBilateral: true,
-        relatedStretch:
-            'Supine Twist: Knees to one side, arms out, hold 30 seconds each.',
-      ),
-      Exercise(
         id: 'bird_dog',
         name: 'Bird Dog',
         description:
@@ -423,28 +350,6 @@ class ExerciseData {
         isBilateral: true,
         relatedStretch: 'Cat-Cow: Arch and round the spine slowly, 5 cycles.',
       ),
-      Exercise(
-        id: 'hollow_body_hold',
-        name: 'Hollow Body Hold',
-        description:
-            'The gymnast\'s staple. Lower back on floor, legs and arms extended and hovering.',
-        type: ExerciseType.strength,
-        currentReps: defaultStartingSeconds,
-        isTimed: true,
-        relatedStretch:
-            'Knees to Chest: Hug both knees, rock gently side to side.',
-      ),
-      Exercise(
-        id: 'l_sit',
-        name: 'L-Sit (Floor)',
-        description:
-            'Sitting with legs straight, pushing hands into floor to lift butt (and maybe heels) off the ground.',
-        type: ExerciseType.strength,
-        currentReps: 15, // Seconds - challenging!
-        isTimed: true,
-        relatedStretch: 'Seated Forward Fold: Reach for toes, hold 30 seconds.',
-      ),
-
       // ===== MOBILITY & RESTORATION =====
       Exercise(
         id: 'worlds_greatest_stretch',

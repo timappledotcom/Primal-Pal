@@ -9,6 +9,7 @@ class StorageService {
   static const String _lastScheduledDateKey = 'last_scheduled_date';
   static const String _scheduledExercisesKey = 'scheduled_exercises';
   static const String _dailyWalksKey = 'daily_walks';
+  static const String _sprintSessionsKey = 'sprint_sessions';
 
   SharedPreferences? _prefs;
 
@@ -234,10 +235,9 @@ class StorageService {
     }
   }
 
-  /// Log or update today's walk
+  /// Log or update today's walk with accumulated time
   Future<void> logTodaysWalk({
-    required bool completed,
-    int? durationMinutes,
+    int? totalSeconds,
     String? notes,
   }) async {
     final walks = await loadDailyWalks();
@@ -249,8 +249,7 @@ class StorageService {
 
     final newWalk = DailyWalk(
       date: today,
-      completed: completed,
-      durationMinutes: durationMinutes ?? 30,
+      totalSeconds: totalSeconds ?? 0,
       notes: notes,
     );
 
@@ -261,6 +260,28 @@ class StorageService {
     }
 
     await saveDailyWalks(walks);
+  }
+
+  /// Add seconds to today's walk timer
+  Future<DailyWalk> addSecondsToTodaysWalk(int seconds) async {
+    final walks = await loadDailyWalks();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final existingIndex =
+        walks.indexWhere((w) => w.dateOnly.isAtSameMomentAs(today));
+
+    DailyWalk updatedWalk;
+    if (existingIndex != -1) {
+      updatedWalk = walks[existingIndex].addSeconds(seconds);
+      walks[existingIndex] = updatedWalk;
+    } else {
+      updatedWalk = DailyWalk(date: today, totalSeconds: seconds);
+      walks.add(updatedWalk);
+    }
+
+    await saveDailyWalks(walks);
+    return updatedWalk;
   }
 
   /// Get walks for a date range
@@ -296,5 +317,122 @@ class StorageService {
     final firstDay = DateTime(now.year, 1, 1);
     final lastDay = DateTime(now.year, 12, 31);
     return getWalksInRange(firstDay, lastDay);
+  }
+
+  // ============ SPRINT SESSIONS ============
+
+  /// Save all sprint sessions
+  Future<void> saveSprintSessions(List<SprintSession> sprints) async {
+    final p = await prefs;
+    final jsonList = sprints.map((e) => e.toJson()).toList();
+    await p.setString(_sprintSessionsKey, jsonEncode(jsonList));
+  }
+
+  /// Load all sprint sessions
+  Future<List<SprintSession>> loadSprintSessions() async {
+    final p = await prefs;
+    final jsonString = p.getString(_sprintSessionsKey);
+
+    if (jsonString == null) {
+      return [];
+    }
+
+    try {
+      final jsonList = jsonDecode(jsonString) as List<dynamic>;
+      return jsonList
+          .map((json) => SprintSession.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Error loading sprint sessions: $e');
+      return [];
+    }
+  }
+
+  /// Ensure sprints are scheduled for the current month and next month
+  /// Returns the updated list of all sprints
+  Future<List<SprintSession>> ensureSprintsScheduled() async {
+    final sprints = await loadSprintSessions();
+    final now = DateTime.now();
+    var updated = false;
+
+    // Check current month
+    if (SprintScheduler.needsSchedulingForMonth(sprints, now.year, now.month)) {
+      final newDays = SprintScheduler.generateSprintDaysForMonth(now.year, now.month);
+      for (final day in newDays) {
+        // Only add if not already scheduled
+        final exists = sprints.any((s) => 
+          s.date.year == day.year && 
+          s.date.month == day.month && 
+          s.date.day == day.day
+        );
+        if (!exists) {
+          sprints.add(SprintSession(date: day));
+          updated = true;
+        }
+      }
+    }
+
+    // Check next month
+    final nextMonth = DateTime(now.year, now.month + 1, 1);
+    if (SprintScheduler.needsSchedulingForMonth(sprints, nextMonth.year, nextMonth.month)) {
+      final newDays = SprintScheduler.generateSprintDaysForMonth(nextMonth.year, nextMonth.month);
+      for (final day in newDays) {
+        final exists = sprints.any((s) => 
+          s.date.year == day.year && 
+          s.date.month == day.month && 
+          s.date.day == day.day
+        );
+        if (!exists) {
+          sprints.add(SprintSession(date: day));
+          updated = true;
+        }
+      }
+    }
+
+    if (updated) {
+      await saveSprintSessions(sprints);
+    }
+
+    return sprints;
+  }
+
+  /// Get today's sprint session if scheduled
+  Future<SprintSession?> getTodaysSprint() async {
+    final sprints = await loadSprintSessions();
+    return SprintScheduler.getTodaysSprint(sprints);
+  }
+
+  /// Mark today's sprint as completed
+  Future<SprintSession?> completeTodaysSprint() async {
+    final sprints = await loadSprintSessions();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final index = sprints.indexWhere((s) => s.dateOnly.isAtSameMomentAs(today));
+    if (index == -1) return null;
+
+    final completed = sprints[index].markCompleted();
+    sprints[index] = completed;
+    await saveSprintSessions(sprints);
+
+    return completed;
+  }
+
+  /// Get upcoming sprints (including today)
+  Future<List<SprintSession>> getUpcomingSprints() async {
+    final sprints = await loadSprintSessions();
+    return SprintScheduler.getUpcomingSprints(sprints);
+  }
+
+  /// Get past sprints for history
+  Future<List<SprintSession>> getPastSprints() async {
+    final sprints = await loadSprintSessions();
+    return SprintScheduler.getPastSprints(sprints);
+  }
+
+  /// Get sprint statistics
+  Future<SprintStatistics> getSprintStatistics() async {
+    final sprints = await loadSprintSessions();
+    return SprintStatistics.fromSprints(sprints);
   }
 }

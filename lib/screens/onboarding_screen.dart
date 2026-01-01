@@ -21,67 +21,116 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<_OnboardingPage> _pages = [
     _OnboardingPage(
+      icon: Icons.auto_awesome,
+      title: 'The Primal Blueprint',
+      subtitle: 'Live Like Your Ancestors',
+      body: '''Welcome to Swole Timer—an app built around Mark Sisson's 10 Primal Laws.
+
+These laws are based on how our ancestors lived for millions of years. Our genes expect certain inputs to thrive: movement, sunlight, real food, and rest.
+
+Let's explore how this app helps you live primally in the modern world.''',
+    ),
+    _OnboardingPage(
+      icon: Icons.restaurant,
+      title: '1. Eat Animals & Plants',
+      subtitle: 'Fuel Your Body Right',
+      body: '''Our ancestors ate what they could hunt and gather—meat, fish, vegetables, fruits, nuts, and seeds.
+
+While this app doesn't track your food, remember: no amount of exercise can outrun a bad diet.
+
+Eat real, whole foods. Avoid processed junk. Your workouts will thank you.''',
+    ),
+    _OnboardingPage(
       icon: Icons.directions_walk,
-      title: 'Walk Every Day',
-      subtitle: '30 Minutes for a Healthier You',
-      body: '''Walking is the foundation of good health. Just 30 minutes of walking each day can:
+      title: '2. Move Around a Lot',
+      subtitle: 'At a Slow Pace',
+      body: '''Our ancestors walked 5-10 miles daily—foraging, hunting, and exploring.
 
-• Improve cardiovascular health
-• Boost mood and reduce stress
-• Aid digestion and metabolism
-• Strengthen bones and muscles
+That's why we track your Daily Walk. Hit that start button and accumulate walking time throughout the day. Aim for at least 30 minutes.
 
-Track your daily walk with a simple checkbox. Build a streak and watch your progress grow week by week!''',
+Low-level aerobic activity burns fat, improves mood, and builds the foundation for all other fitness.''',
     ),
     _OnboardingPage(
       icon: Icons.fitness_center,
-      title: 'Greasing the Groove',
-      subtitle: 'The Soviet Secret to Strength',
-      body: '''This method was popularized by Pavel Tsatsouline, a former Soviet Special Forces instructor.
+      title: '3. Lift Heavy Things',
+      subtitle: 'Build Functional Strength',
+      body: '''Our ancestors lifted rocks, carried game, climbed trees, and built shelters.
 
-The idea is simple: practice a movement frequently throughout the day, but never to failure. By staying fresh, you train your nervous system to become more efficient at the movement.
+Our "Greasing the Groove" system sends you strength exercises throughout the day—push-ups, squats, planks, and more.
 
-"Strength is a skill. And like any skill, it must be practiced."''',
+Short bursts of effort, never to failure. This builds real, functional strength without the burnout.''',
     ),
     _OnboardingPage(
-      icon: Icons.calendar_today,
-      title: 'Sport Days vs Rest Days',
-      subtitle: 'Balance Strength & Mobility',
-      body: '''On SPORT DAYS (default: Tue, Thu, Sat), you'll focus on mobility work—stretches and movements that keep you limber and prevent injury.
+      icon: Icons.directions_run,
+      title: '4. Run Really Fast',
+      subtitle: 'Once in a While',
+      body: '''Sometimes our ancestors had to sprint—chasing prey or escaping predators.
 
-On REST DAYS, you'll get strength exercises like push-ups, squats, and planks to build muscle while recovering.
+That's why we schedule 2 Sprint Sessions per month, at least 7 days apart. You'll get a notification on sprint days.
 
-Toggle your sport days in Settings to match your schedule.''',
+Just a few all-out sprints. Brief, intense, and incredibly effective for fitness and fat burning.''',
     ),
     _OnboardingPage(
-      icon: Icons.notifications_active,
-      title: 'Exercise Snacks',
-      subtitle: 'Random Reminders Throughout the Day',
-      body: '''Set your "active window" (e.g., 7 AM to 8 PM) and how many "snacks" you want per day.
+      icon: Icons.bedtime,
+      title: '5. Get Lots of Sleep',
+      subtitle: 'Recovery Is Non-Negotiable',
+      body: '''Our ancestors slept when it got dark and rose with the sun. 7-9 hours of quality sleep was the norm.
 
-The app will send you random notifications during that window. Each notification is a mini workout—just a few reps and a quick stretch.
+While we can't track your sleep, remember: this is when your body repairs and grows stronger.
 
-No gym required. Do them wherever you are.''',
+Prioritize sleep. Your exercise "snacks" will feel easier when you're well-rested.''',
     ),
     _OnboardingPage(
-      icon: Icons.trending_up,
-      title: 'Progressive Overload',
-      subtitle: 'Slow & Steady Gains',
-      body: '''After each session, you'll be asked: "Was that easy?"
+      icon: Icons.sports_esports,
+      title: '6. Play',
+      subtitle: 'Have Fun Moving',
+      body: '''Our ancestors played—wrestling, games, exploration. Movement was joyful, not a chore.
 
-If you say YES (and completed all reps), we'll add +2 reps next time. If not, no worries—you'll stay at the same level until you're ready.
+That's why our exercises are varied and our reminders are random. Each notification is a mini-adventure.
 
-This gentle progression builds real, lasting strength without burnout.''',
+Don't take it too seriously. Enjoy the movement. Play with your kids. Dance. Have fun.''',
     ),
     _OnboardingPage(
-      icon: Icons.repeat,
-      title: 'Anti-Repetition',
-      subtitle: 'Variety Keeps It Fresh',
-      body: '''The app won't give you the same exercise two days in a row. This ensures variety and prevents overuse of any single muscle group.
+      icon: Icons.wb_sunny,
+      title: '7. Get Sunlight',
+      subtitle: 'Every Day',
+      body: '''Our ancestors lived outdoors. Sunlight regulated their hormones, vitamin D levels, and circadian rhythms.
 
-With 30+ exercises in the pool, you'll stay engaged and hit your body from all angles.
+Your daily walk is the perfect opportunity to get outside and soak up some rays.
 
-Ready to get strong, the old-school way?''',
+Morning sunlight is especially powerful. Take your walk outside when you can.''',
+    ),
+    _OnboardingPage(
+      icon: Icons.healing,
+      title: '8. Avoid Trauma',
+      subtitle: 'Train Smart, Stay Healthy',
+      body: '''Our ancestors avoided unnecessary risks. An injury could mean death.
+
+That's why we use "Greasing the Groove"—never training to failure, always staying fresh. Progressive overload is gradual (+2 reps when it feels easy).
+
+Listen to your body. Skip a session if you need to. Long-term consistency beats short-term intensity.''',
+    ),
+    _OnboardingPage(
+      icon: Icons.block,
+      title: '9. Avoid Poison',
+      subtitle: 'Protect Your Body',
+      body: '''Our ancestors knew which plants and substances to avoid.
+
+Today's "poisons" are processed foods, excess sugar, seed oils, chronic stress, and too much screen time.
+
+Use this app mindfully. Do your exercises, take your walks, then put the phone down and live your life.''',
+    ),
+    _OnboardingPage(
+      icon: Icons.psychology,
+      title: '10. Use Your Mind',
+      subtitle: 'Stay Curious & Creative',
+      body: '''Our ancestors solved problems, told stories, and explored their world.
+
+Physical fitness supports mental fitness. Exercise improves focus, creativity, and mood.
+
+Challenge yourself. Learn new movements. Pay attention to how exercises feel. The mind-body connection is real.
+
+Ready to live primally?''',
     ),
   ];
 

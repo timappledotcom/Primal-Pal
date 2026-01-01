@@ -1,26 +1,53 @@
-/// Model class representing a daily walk log entry
+/// Model class representing a daily walk log entry with accumulated time
 class DailyWalk {
   final DateTime date;
-  final bool completed;
-  final int? durationMinutes;
+
+  /// Total accumulated walking time in seconds for this day
+  final int totalSeconds;
+
   final String? notes;
 
   DailyWalk({
     required this.date,
-    required this.completed,
-    this.durationMinutes,
+    this.totalSeconds = 0,
     this.notes,
   });
+
+  /// Whether walking was done today (any time accumulated)
+  bool get completed => totalSeconds > 0;
+
+  /// Duration in minutes (for backward compatibility and display)
+  int get durationMinutes => (totalSeconds / 60).floor();
 
   /// Get the date without time component (for comparison)
   DateTime get dateOnly => DateTime(date.year, date.month, date.day);
 
+  /// Format the total time as HH:MM:SS
+  String get formattedTime {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
   /// Create DailyWalk from JSON map
   factory DailyWalk.fromJson(Map<String, dynamic> json) {
+    // Handle migration from old format (completed + durationMinutes) to new format (totalSeconds)
+    int totalSeconds = 0;
+    if (json.containsKey('totalSeconds')) {
+      totalSeconds = json['totalSeconds'] as int;
+    } else if (json['completed'] == true && json['durationMinutes'] != null) {
+      // Migrate old data: convert minutes to seconds
+      totalSeconds = (json['durationMinutes'] as int) * 60;
+    }
+
     return DailyWalk(
       date: DateTime.parse(json['date'] as String),
-      completed: json['completed'] as bool,
-      durationMinutes: json['durationMinutes'] as int?,
+      totalSeconds: totalSeconds,
       notes: json['notes'] as String?,
     );
   }
@@ -29,8 +56,7 @@ class DailyWalk {
   Map<String, dynamic> toJson() {
     return {
       'date': date.toIso8601String(),
-      'completed': completed,
-      'durationMinutes': durationMinutes,
+      'totalSeconds': totalSeconds,
       'notes': notes,
     };
   }
@@ -38,16 +64,19 @@ class DailyWalk {
   /// Create a copy with updated fields
   DailyWalk copyWith({
     DateTime? date,
-    bool? completed,
-    int? durationMinutes,
+    int? totalSeconds,
     String? notes,
   }) {
     return DailyWalk(
       date: date ?? this.date,
-      completed: completed ?? this.completed,
-      durationMinutes: durationMinutes ?? this.durationMinutes,
+      totalSeconds: totalSeconds ?? this.totalSeconds,
       notes: notes ?? this.notes,
     );
+  }
+
+  /// Add seconds to the accumulated time
+  DailyWalk addSeconds(int seconds) {
+    return copyWith(totalSeconds: totalSeconds + seconds);
   }
 
   /// Check if this walk is from today
@@ -65,7 +94,7 @@ class DailyWalk {
 
   @override
   String toString() {
-    return 'DailyWalk(date: $dateOnly, completed: $completed, duration: $durationMinutes min)';
+    return 'DailyWalk(date: $dateOnly, totalSeconds: $totalSeconds, formatted: $formattedTime)';
   }
 }
 
@@ -73,7 +102,7 @@ class DailyWalk {
 class WalkStatistics {
   final int totalDays;
   final int completedDays;
-  final int totalMinutes;
+  final int totalSeconds;
   final int currentStreak;
   final int longestStreak;
   final DateTime? periodStart;
@@ -82,7 +111,7 @@ class WalkStatistics {
   WalkStatistics({
     required this.totalDays,
     required this.completedDays,
-    required this.totalMinutes,
+    required this.totalSeconds,
     required this.currentStreak,
     required this.longestStreak,
     this.periodStart,
@@ -93,16 +122,30 @@ class WalkStatistics {
   double get completionRate =>
       totalDays > 0 ? (completedDays / totalDays) * 100 : 0;
 
+  /// Average duration per walk in seconds
+  double get averageDurationSeconds =>
+      completedDays > 0 ? totalSeconds / completedDays : 0;
+
   /// Average duration per walk in minutes
-  double get averageDuration =>
-      completedDays > 0 ? totalMinutes / completedDays : 0;
+  double get averageDuration => averageDurationSeconds / 60;
+
+  /// Total minutes walked
+  int get totalMinutes => (totalSeconds / 60).floor();
+
+  /// Format average time as MM:SS
+  String get formattedAverageTime {
+    final avgSeconds = averageDurationSeconds.round();
+    final minutes = avgSeconds ~/ 60;
+    final seconds = avgSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
 
   /// Create empty statistics
   factory WalkStatistics.empty() {
     return WalkStatistics(
       totalDays: 0,
       completedDays: 0,
-      totalMinutes: 0,
+      totalSeconds: 0,
       currentStreak: 0,
       longestStreak: 0,
     );
@@ -121,9 +164,9 @@ class WalkStatistics {
       ..sort((a, b) => b.date.compareTo(a.date));
 
     final completedWalks = sorted.where((w) => w.completed).toList();
-    final totalMinutes = completedWalks.fold<int>(
+    final totalSeconds = completedWalks.fold<int>(
       0,
-      (sum, w) => sum + (w.durationMinutes ?? 30),
+      (sum, w) => sum + w.totalSeconds,
     );
 
     // Calculate current streak (consecutive days from today)
@@ -165,7 +208,7 @@ class WalkStatistics {
     return WalkStatistics(
       totalDays: walks.length,
       completedDays: completedWalks.length,
-      totalMinutes: totalMinutes,
+      totalSeconds: totalSeconds,
       currentStreak: currentStreak,
       longestStreak: longestStreak,
       periodStart: periodStart,

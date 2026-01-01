@@ -68,7 +68,6 @@ class ExerciseProvider extends ChangeNotifier {
   /// Rules:
   /// - Sport Day (true) → Mobility exercises only
   /// - Rest Day (false) → Strength exercises only
-  /// - Anti-Repetition: Exclude exercises performed yesterday
   /// - Only include enabled exercises
   List<Exercise> getAvailableExercisesForToday(AppSettings settings) {
     final isSportDay = settings.isTodaySportDay();
@@ -80,7 +79,6 @@ class ExerciseProvider extends ChangeNotifier {
     return _exercises
         .where((exercise) => exercise.isEnabled)
         .where((exercise) => exercise.type == typeFilter)
-        .where((exercise) => !exercise.wasPerformedYesterday())
         .toList();
   }
 
@@ -92,7 +90,6 @@ class ExerciseProvider extends ChangeNotifier {
     return _exercises
         .where((exercise) => exercise.isEnabled)
         .where((exercise) => exercise.type == typeFilter)
-        .where((exercise) => !exercise.wasPerformedYesterday())
         .toList();
   }
 

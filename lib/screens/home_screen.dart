@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
@@ -5,6 +6,8 @@ import '../providers/providers.dart';
 import '../services/services.dart';
 import 'active_session_screen.dart';
 import 'settings_screen.dart';
+import 'walk_history_screen.dart';
+import 'sprint_history_screen.dart';
 
 /// Home screen displaying today's schedule and exercise overview
 class HomeScreen extends StatefulWidget {
@@ -18,15 +21,68 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _exercisePoolExpanded = false;
   List<ScheduledExercise> _scheduledExercises = [];
   final StorageService _storageService = StorageService();
-  bool _todayWalkCompleted = false;
+
+  // Walk timer state
+  int _todayTotalSeconds = 0;
   int _currentStreak = 0;
+  bool _isWalkTimerRunning = false;
+  Timer? _walkTimer;
+  DateTime? _walkStartTime;
+
+  // Sprint state
+  SprintSession? _todaysSprint;
+  SprintSession? _nextSprint;
 
   @override
   void initState() {
     super.initState();
     _loadScheduledExercises();
     _loadTodaysWalk();
+    _loadSprintData();
     _scheduleNotificationsIfNeeded();
+  }
+
+  @override
+  void dispose() {
+    _walkTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadSprintData() async {
+    // Ensure sprints are scheduled for current and next month
+    await _storageService.ensureSprintsScheduled();
+    
+    final todaysSprint = await _storageService.getTodaysSprint();
+    final upcomingSprints = await _storageService.getUpcomingSprints();
+    
+    // Find next sprint (could be today if not completed, or a future one)
+    SprintSession? nextSprint;
+    if (upcomingSprints.isNotEmpty) {
+      nextSprint = upcomingSprints.firstWhere(
+        (s) => !s.completed,
+        orElse: () => upcomingSprints.first,
+      );
+    }
+
+    // Schedule notification if today is sprint day
+    if (todaysSprint != null && !todaysSprint.completed) {
+      await NotificationService().scheduleSprintNotification(todaysSprint);
+    }
+
+    if (mounted) {
+      setState(() {
+        _todaysSprint = todaysSprint;
+        _nextSprint = nextSprint;
+      });
+    }
+  }
+
+  Future<void> _completeSprint() async {
+    final completed = await _storageService.completeTodaysSprint();
+    if (completed != null) {
+      await NotificationService().cancelSprintNotification();
+      await _loadSprintData();
+    }
   }
 
   Future<void> _loadTodaysWalk() async {
@@ -36,15 +92,63 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (mounted) {
       setState(() {
-        _todayWalkCompleted = todaysWalk?.completed ?? false;
+        _todayTotalSeconds = todaysWalk?.totalSeconds ?? 0;
         _currentStreak = stats.currentStreak;
       });
     }
   }
 
-  Future<void> _toggleTodaysWalk(bool completed) async {
-    await _storageService.logTodaysWalk(completed: completed);
-    await _loadTodaysWalk();
+  void _toggleWalkTimer() {
+    if (_isWalkTimerRunning) {
+      _stopWalkTimer();
+    } else {
+      _startWalkTimer();
+    }
+  }
+
+  void _startWalkTimer() {
+    setState(() {
+      _isWalkTimerRunning = true;
+      _walkStartTime = DateTime.now();
+    });
+
+    _walkTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _todayTotalSeconds++;
+        });
+      }
+    });
+  }
+
+  Future<void> _stopWalkTimer() async {
+    _walkTimer?.cancel();
+    _walkTimer = null;
+
+    if (_walkStartTime != null) {
+      final elapsed = DateTime.now().difference(_walkStartTime!).inSeconds;
+      await _storageService.addSecondsToTodaysWalk(elapsed);
+    }
+
+    if (mounted) {
+      setState(() {
+        _isWalkTimerRunning = false;
+        _walkStartTime = null;
+      });
+      // Reload to sync with stored value and update streak
+      await _loadTodaysWalk();
+    }
+  }
+
+  String _formatWalkTime(int totalSeconds) {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   Future<void> _loadScheduledExercises() async {
@@ -116,6 +220,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 _buildDailyWalkCard(),
                 const SizedBox(height: 16),
+                _buildSprintCard(),
+                const SizedBox(height: 16),
                 _buildActiveWindowCard(settingsProvider),
                 const SizedBox(height: 16),
                 _buildQuickStartButton(exerciseProvider, settingsProvider),
@@ -186,90 +292,272 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDailyWalkCard() {
+    final hasWalkedToday = _todayTotalSeconds > 0;
+
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _todayWalkCompleted
-                        ? Colors.green.withOpacity(0.2)
-                        : Colors.grey.withOpacity(0.1),
-                    shape: BoxShape.circle,
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WalkHistoryScreen()),
+        ),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _isWalkTimerRunning
+                          ? Colors.green.withOpacity(0.2)
+                          : hasWalkedToday
+                              ? Colors.blue.withOpacity(0.2)
+                              : Colors.grey.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.directions_walk,
+                      color: _isWalkTimerRunning
+                          ? Colors.green
+                          : hasWalkedToday
+                              ? Colors.blue
+                              : Colors.grey,
+                      size: 24,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.directions_walk,
-                    color: _todayWalkCompleted ? Colors.green : Colors.grey,
-                    size: 24,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Daily Walk',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          _isWalkTimerRunning ? 'Timer running...' : 'Tap to see history',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: _isWalkTimerRunning ? Colors.green : Colors.grey[600],
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Timer display
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  _formatWalkTime(_todayTotalSeconds),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                        color: _isWalkTimerRunning ? Colors.green : null,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Start/Stop button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _toggleWalkTimer,
+                  icon: Icon(
+                    _isWalkTimerRunning ? Icons.stop : Icons.play_arrow,
+                  ),
+                  label: Text(_isWalkTimerRunning ? 'Stop Walk' : 'Start Walk'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isWalkTimerRunning ? Colors.red : Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              if (_currentStreak > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'Daily Walk',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      const Icon(
+                        Icons.local_fire_department,
+                        color: Colors.amber,
+                        size: 18,
                       ),
+                      const SizedBox(width: 6),
                       Text(
-                        '30 minutes minimum',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[600],
-                            ),
+                        '$_currentStreak day streak!',
+                        style: const TextStyle(
+                          color: Colors.amber,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Transform.scale(
-                  scale: 1.2,
-                  child: Checkbox(
-                    value: _todayWalkCompleted,
-                    onChanged: (value) => _toggleTodaysWalk(value ?? false),
-                    activeColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSprintCard() {
+    final isSprintDay = _todaysSprint != null;
+    final isCompleted = _todaysSprint?.completed ?? false;
+
+    String _formatSprintDate(DateTime date) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(const Duration(days: 1));
+      final dateOnly = DateTime(date.year, date.month, date.day);
+
+      if (dateOnly.isAtSameMomentAs(today)) {
+        return 'Today';
+      } else if (dateOnly.isAtSameMomentAs(tomorrow)) {
+        return 'Tomorrow';
+      }
+
+      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      final daysUntil = dateOnly.difference(today).inDays;
+      
+      if (daysUntil <= 7) {
+        return '${weekdays[date.weekday - 1]} (in $daysUntil days)';
+      }
+      return '${months[date.month - 1]} ${date.day}';
+    }
+
+    return Card(
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SprintHistoryScreen()),
+        ),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isSprintDay
+                          ? (isCompleted
+                              ? Colors.green.withOpacity(0.2)
+                              : Colors.orange.withOpacity(0.2))
+                          : Colors.purple.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.directions_run,
+                      color: isSprintDay
+                          ? (isCompleted ? Colors.green : Colors.orange)
+                          : Colors.purple,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Sprint Session',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          isSprintDay
+                              ? (isCompleted ? 'Completed!' : 'Today is sprint day!')
+                              : _nextSprint != null
+                                  ? 'Next: ${_formatSprintDate(_nextSprint!.date)}'
+                                  : '2x per month',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: isSprintDay && !isCompleted
+                                    ? Colors.orange
+                                    : Colors.grey[600],
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+              if (isSprintDay && !isCompleted) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _completeSprint,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Mark Complete'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
               ],
-            ),
-            if (_currentStreak > 0) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.local_fire_department,
-                      color: Colors.amber,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$_currentStreak day streak!',
-                      style: const TextStyle(
-                        color: Colors.amber,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+              if (isSprintDay && isCompleted) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 18,
                       ),
-                    ),
-                  ],
+                      SizedBox(width: 6),
+                      Text(
+                        'Sprint complete!',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
