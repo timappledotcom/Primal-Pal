@@ -17,23 +17,23 @@ void main() async {
   await notificationService.requestPermissions();
 
   runApp(
-    SwoleTimerApp(storageService: storageService),
+    PrimalPalApp(storageService: storageService),
   );
 }
 
-class SwoleTimerApp extends StatefulWidget {
+class PrimalPalApp extends StatefulWidget {
   final StorageService storageService;
 
-  const SwoleTimerApp({
+  const PrimalPalApp({
     super.key,
     required this.storageService,
   });
 
   @override
-  State<SwoleTimerApp> createState() => _SwoleTimerAppState();
+  State<PrimalPalApp> createState() => _PrimalPalAppState();
 }
 
-class _SwoleTimerAppState extends State<SwoleTimerApp> {
+class _PrimalPalAppState extends State<PrimalPalApp> {
   late final ExerciseProvider _exerciseProvider;
   late final SettingsProvider _settingsProvider;
 
@@ -123,7 +123,7 @@ class _SwoleTimerAppState extends State<SwoleTimerApp> {
         ChangeNotifierProvider.value(value: _settingsProvider),
       ],
       child: MaterialApp(
-        title: 'Swole Timer',
+        title: 'Primal Pal',
         navigatorKey: _navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(

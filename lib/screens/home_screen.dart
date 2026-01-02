@@ -193,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Swole Timer'),
+        title: const Text('Primal Pal'),
         centerTitle: true,
         actions: [
           IconButton(
@@ -743,32 +743,44 @@ class _HomeScreenState extends State<HomeScreen> {
       ScheduledExercise scheduled, Exercise exercise) {
     final isPast = scheduled.isPast;
     final isUpcoming = scheduled.isUpcoming;
+    final isCompleted = scheduled.isCompleted;
+    final isMissed = isPast && !isCompleted;
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
-        backgroundColor: isPast
-            ? Colors.grey.withOpacity(0.2)
-            : exercise.type == ExerciseType.strength
-                ? Colors.blue.withOpacity(0.2)
-                : Colors.orange.withOpacity(0.2),
+        backgroundColor: isCompleted
+            ? Colors.green.withOpacity(0.2)
+            : isMissed
+                ? Colors.red.withOpacity(0.1)
+                : exercise.type == ExerciseType.strength
+                    ? Colors.blue.withOpacity(0.2)
+                    : Colors.orange.withOpacity(0.2),
         child: Icon(
-          exercise.type == ExerciseType.strength
-              ? Icons.fitness_center
-              : Icons.self_improvement,
-          color: isPast
-              ? Colors.grey
+          isCompleted
+              ? Icons.check
               : exercise.type == ExerciseType.strength
-                  ? Colors.blue
-                  : Colors.orange,
+                  ? Icons.fitness_center
+                  : Icons.self_improvement,
+          color: isCompleted
+              ? Colors.green
+              : isMissed
+                  ? Colors.red.withOpacity(0.5)
+                  : exercise.type == ExerciseType.strength
+                      ? Colors.blue
+                      : Colors.orange,
           size: 20,
         ),
       ),
       title: Text(
         exercise.name,
         style: TextStyle(
-          color: isPast ? Colors.grey : null,
-          decoration: isPast ? TextDecoration.lineThrough : null,
+          color: isCompleted
+              ? Colors.green
+              : isMissed
+                  ? Colors.red.withOpacity(0.6)
+                  : null,
+          decoration: isCompleted ? TextDecoration.lineThrough : null,
         ),
       ),
       subtitle: Row(
@@ -778,10 +790,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? '${exercise.currentReps} seconds'
                 : '${exercise.currentReps} reps',
             style: TextStyle(
-              color: isPast ? Colors.grey : null,
+              color: isCompleted || isMissed ? Colors.grey : null,
             ),
           ),
-          if (scheduled.isSnoozed) ...[
+          if (scheduled.isSnoozed && !isCompleted) ...[
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -799,32 +811,58 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+          if (isMissed) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Missed',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.red.withOpacity(0.7),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isPast
-              ? Colors.grey.withOpacity(0.1)
-              : isUpcoming
-                  ? Colors.green.withOpacity(0.2)
-                  : Theme.of(context)
-                      .colorScheme
-                      .primaryContainer
-                      .withOpacity(0.5),
+          color: isCompleted
+              ? Colors.green.withOpacity(0.1)
+              : isMissed
+                  ? Colors.red.withOpacity(0.05)
+                  : isUpcoming
+                      ? Colors.green.withOpacity(0.2)
+                      : Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withOpacity(0.5),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              isPast ? Icons.check : Icons.access_time,
+              isCompleted
+                  ? Icons.check
+                  : isMissed
+                      ? Icons.close
+                      : Icons.access_time,
               size: 14,
-              color: isPast
-                  ? Colors.grey
-                  : isUpcoming
-                      ? Colors.green
-                      : Theme.of(context).colorScheme.primary,
+              color: isCompleted
+                  ? Colors.green
+                  : isMissed
+                      ? Colors.red.withOpacity(0.5)
+                      : isUpcoming
+                          ? Colors.green
+                          : Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(width: 4),
             Text(
@@ -832,18 +870,21 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: isPast
-                    ? Colors.grey
-                    : isUpcoming
-                        ? Colors.green
-                        : Theme.of(context).colorScheme.primary,
+                color: isCompleted
+                    ? Colors.green
+                    : isMissed
+                        ? Colors.red.withOpacity(0.5)
+                        : isUpcoming
+                            ? Colors.green
+                            : Theme.of(context).colorScheme.primary,
               ),
             ),
           ],
         ),
       ),
-      onTap: () => _startSession(exercise),
-      onLongPress: isPast ? null : () => _showSnoozeDialog(scheduled, exercise),
+      onTap: () => _startSession(exercise, scheduledExercise: scheduled),
+      onLongPress:
+          isMissed ? null : () => _showSnoozeDialog(scheduled, exercise),
     );
   }
 
@@ -957,11 +998,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _startSession(Exercise exercise) {
-    context.read<ExerciseProvider>().setCurrentExerciseObject(exercise);
+  void _startSession(Exercise exercise,
+      {ScheduledExercise? scheduledExercise}) {
+    context.read<ExerciseProvider>().setCurrentExerciseObject(exercise,
+        scheduledExercise: scheduledExercise);
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ActiveSessionScreen()),
-    );
+    ).then((_) {
+      // Reload scheduled exercises after returning from session
+      _loadScheduledExercises();
+    });
   }
 }

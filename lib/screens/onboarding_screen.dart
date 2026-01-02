@@ -25,7 +25,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'The Primal Blueprint',
       subtitle: 'Live Like Your Ancestors',
       body:
-          '''Welcome to Swole Timer—an app built around Mark Sisson's 10 Primal Laws.
+          '''Welcome to Primal Pal—an app built around Mark Sisson's 10 Primal Laws.
 
 These laws are based on how our ancestors lived for millions of years. Our genes expect certain inputs to thrive: movement, sunlight, real food, and rest.
 

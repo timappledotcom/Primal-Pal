@@ -416,6 +416,38 @@ class ExerciseData {
         relatedStretch:
             'Cross-Body Shoulder Stretch: Pull arm across chest, hold 20 seconds each.',
       ),
+      Exercise(
+        id: 'knee_circles',
+        name: 'Knee Circles',
+        description:
+            'Standing with feet together, hands on knees, rotate knees in circles. Warms up knee joints and improves mobility.',
+        type: ExerciseType.mobility,
+        currentReps: 10, // Each direction
+        relatedStretch:
+            'Standing Quad Stretch: Pull foot to glutes, hold 20 seconds each side.',
+      ),
+      Exercise(
+        id: 'ankle_circles',
+        name: 'Ankle Circles',
+        description:
+            'Standing on one leg (hold something for balance), rotate the lifted ankle in circles. Essential for ankle mobility and injury prevention.',
+        type: ExerciseType.mobility,
+        currentReps: 10, // Each direction, per ankle
+        isBilateral: true,
+        relatedStretch:
+            'Calf Stretch: Step back, press heel down, hold 20 seconds each side.',
+      ),
+      Exercise(
+        id: 'hip_circles',
+        name: 'Hip Circles',
+        description:
+            'Standing on one leg, lift the other knee and rotate the hip in large circles. Opens up hip joint and improves range of motion.',
+        type: ExerciseType.mobility,
+        currentReps: 10, // Each direction, per hip
+        isBilateral: true,
+        relatedStretch:
+            'Figure-4 Stretch: On back, ankle on knee, pull toward chest, hold 30 seconds.',
+      ),
 
       // ===== ADDITIONAL CORE EXERCISES =====
       Exercise(

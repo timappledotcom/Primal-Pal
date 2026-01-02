@@ -8,6 +8,7 @@ class ExerciseProvider extends ChangeNotifier {
 
   List<Exercise> _exercises = [];
   Exercise? _currentExercise;
+  ScheduledExercise? _currentScheduledExercise;
   bool _isLoading = true;
 
   ExerciseProvider({StorageService? storageService})
@@ -17,6 +18,7 @@ class ExerciseProvider extends ChangeNotifier {
 
   List<Exercise> get exercises => List.unmodifiable(_exercises);
   Exercise? get currentExercise => _currentExercise;
+  ScheduledExercise? get currentScheduledExercise => _currentScheduledExercise;
   bool get isLoading => _isLoading;
 
   /// Get all strength exercises
@@ -145,14 +147,17 @@ class ExerciseProvider extends ChangeNotifier {
   }
 
   /// Set current exercise directly
-  void setCurrentExerciseObject(Exercise exercise) {
+  void setCurrentExerciseObject(Exercise exercise,
+      {ScheduledExercise? scheduledExercise}) {
     _currentExercise = exercise;
+    _currentScheduledExercise = scheduledExercise;
     notifyListeners();
   }
 
   /// Clear the current exercise
   void clearCurrentExercise() {
     _currentExercise = null;
+    _currentScheduledExercise = null;
     notifyListeners();
   }
 
@@ -229,8 +234,15 @@ class ExerciseProvider extends ChangeNotifier {
     // Persist to storage
     await _storageService.saveExercises(_exercises);
 
+    // Mark scheduled exercise as completed if there was one
+    if (_currentScheduledExercise != null) {
+      final completedScheduled = _currentScheduledExercise!.markCompleted();
+      await _storageService.updateScheduledExercise(completedScheduled);
+    }
+
     // Clear current exercise
     _currentExercise = null;
+    _currentScheduledExercise = null;
 
     notifyListeners();
 

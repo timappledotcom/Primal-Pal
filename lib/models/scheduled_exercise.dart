@@ -6,6 +6,7 @@ class ScheduledExercise {
   final int notificationId;
   bool isSnoozed;
   DateTime? originalTime;
+  bool isCompleted;
 
   ScheduledExercise({
     required this.exerciseId,
@@ -14,6 +15,7 @@ class ScheduledExercise {
     required this.notificationId,
     this.isSnoozed = false,
     this.originalTime,
+    this.isCompleted = false,
   });
 
   /// Create ScheduledExercise from JSON map
@@ -27,6 +29,7 @@ class ScheduledExercise {
       originalTime: json['originalTime'] != null
           ? DateTime.parse(json['originalTime'] as String)
           : null,
+      isCompleted: json['isCompleted'] as bool? ?? false,
     );
   }
 
@@ -39,6 +42,7 @@ class ScheduledExercise {
       'notificationId': notificationId,
       'isSnoozed': isSnoozed,
       'originalTime': originalTime?.toIso8601String(),
+      'isCompleted': isCompleted,
     };
   }
 
@@ -71,11 +75,25 @@ class ScheduledExercise {
       notificationId: notificationId,
       isSnoozed: true,
       originalTime: originalTime ?? scheduledTime,
+      isCompleted: isCompleted,
+    );
+  }
+
+  /// Create a completed copy of this exercise
+  ScheduledExercise markCompleted() {
+    return ScheduledExercise(
+      exerciseId: exerciseId,
+      exerciseName: exerciseName,
+      scheduledTime: scheduledTime,
+      notificationId: notificationId,
+      isSnoozed: isSnoozed,
+      originalTime: originalTime,
+      isCompleted: true,
     );
   }
 
   @override
   String toString() {
-    return 'ScheduledExercise(name: $exerciseName, time: $formattedTime, snoozed: $isSnoozed)';
+    return 'ScheduledExercise(name: $exerciseName, time: $formattedTime, snoozed: $isSnoozed, completed: $isCompleted)';
   }
 }

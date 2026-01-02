@@ -23,7 +23,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.example.swole_timer"
+    namespace "com.example.primal_pal"
     compileSdk 36
     ndkVersion flutter.ndkVersion
     buildToolsVersion "35.0.0"
@@ -44,7 +44,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.swole_timer"
+        applicationId "com.example.primal_pal"
         minSdkVersion flutter.minSdkVersion
         targetSdk flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()

@@ -1,4 +1,4 @@
-# Swole Timer - Greasing the Groove Fitness App
+# Primal Pal - Greasing the Groove Fitness App
 
 A Flutter app for "Greasing the Groove" style fitness with random exercise snacks throughout the day.
 
