@@ -5,11 +5,15 @@ class SprintSession {
   final DateTime date;
   final bool completed;
   final DateTime? completedAt;
+  final int? targetSets;
+  final int completedSets;
 
   SprintSession({
     required this.date,
     this.completed = false,
     this.completedAt,
+    this.targetSets,
+    this.completedSets = 0,
   });
 
   /// Get the date without time component (for comparison)
@@ -44,6 +48,8 @@ class SprintSession {
       completedAt: json['completedAt'] != null
           ? DateTime.parse(json['completedAt'] as String)
           : null,
+      targetSets: json['targetSets'] as int?,
+      completedSets: json['completedSets'] as int? ?? 0,
     );
   }
 
@@ -53,6 +59,8 @@ class SprintSession {
       'date': date.toIso8601String(),
       'completed': completed,
       'completedAt': completedAt?.toIso8601String(),
+      'targetSets': targetSets,
+      'completedSets': completedSets,
     };
   }
 
@@ -61,92 +69,43 @@ class SprintSession {
     DateTime? date,
     bool? completed,
     DateTime? completedAt,
+    int? targetSets,
+    int? completedSets,
   }) {
     return SprintSession(
       date: date ?? this.date,
       completed: completed ?? this.completed,
       completedAt: completedAt ?? this.completedAt,
+      targetSets: targetSets ?? this.targetSets,
+      completedSets: completedSets ?? this.completedSets,
     );
   }
-
+  
   /// Mark this sprint as completed
   SprintSession markCompleted() {
     return copyWith(
       completed: true,
       completedAt: DateTime.now(),
+      // Ensure specific rep counts sync up if forcing completion
+      completedSets: (targetSets != null && targetSets! > completedSets) ? targetSets : completedSets, 
+    );
+  }
+
+  /// Increment completed set count
+  SprintSession incrementSets() {
+    final newCompletedSets = completedSets + 1;
+    final isDone = targetSets != null && newCompletedSets >= targetSets!;
+    
+    return copyWith(
+      completedSets: newCompletedSets,
+      completed: isDone,
+      completedAt: isDone ? DateTime.now() : null,
     );
   }
 
   @override
   String toString() {
-    return 'SprintSession(date: $dateOnly, completed: $completed)';
-  }
-}
-
-/// Helper class to generate and manage sprint schedules
-class SprintScheduler {
-  /// Generate two random sprint days for a given month
-  /// Ensures at least 7 days between sprints
-  static List<DateTime> generateSprintDaysForMonth(int year, int month,
-      {Random? random}) {
-    random ??= Random();
-
-    final lastDayOfMonth = DateTime(year, month + 1, 0);
-    final daysInMonth = lastDayOfMonth.day;
-
-    // We need at least 14 days in the available period to have 2 sprints with 7 days gap
-    // Split the month into two halves to ensure spacing
-
-    // First sprint: randomly in first half of month (day 1-14 or so)
-    final firstHalfEnd = (daysInMonth / 2).floor();
-    final firstSprintDay = random.nextInt(firstHalfEnd) + 1;
-
-    // Second sprint: at least 7 days after first, but within the month
-    final earliestSecondDay = firstSprintDay + 7;
-    final latestSecondDay = daysInMonth;
-
-    int secondSprintDay;
-    if (earliestSecondDay <= latestSecondDay) {
-      secondSprintDay =
-          random.nextInt(latestSecondDay - earliestSecondDay + 1) +
-              earliestSecondDay;
-    } else {
-      // Fallback: just use the last day of month
-      secondSprintDay = daysInMonth;
-    }
-
-    return [
-      DateTime(year, month, firstSprintDay),
-      DateTime(year, month, secondSprintDay),
-    ];
-  }
-
-  /// Check if sprint days need to be generated for the current month
-  static bool needsSchedulingForMonth(
-      List<SprintSession> existingSprints, int year, int month) {
-    final monthSprints = existingSprints.where((s) {
-      return s.date.year == year && s.date.month == month;
-    }).toList();
-
-    return monthSprints.length < 2;
-  }
-
-  /// Get upcoming sprints (today and future)
-  static List<SprintSession> getUpcomingSprints(List<SprintSession> sprints) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    return sprints.where((s) => !s.dateOnly.isBefore(today)).toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
-  }
-
-  /// Get past sprints (not including today)
-  static List<SprintSession> getPastSprints(List<SprintSession> sprints) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    return sprints.where((s) => s.dateOnly.isBefore(today)).toList()
-      ..sort((a, b) => b.date.compareTo(a.date)); // Most recent first
+    return 'SprintSession(date: $dateOnly, completed: $completed, sets: $completedSets/${targetSets ?? "?"})';
   }
 
   /// Get today's sprint if scheduled
@@ -165,12 +124,16 @@ class SprintStatistics {
   final int totalCompleted;
   final int currentStreak;
   final int longestStreak;
+  final int completedChunks; // Individual sets/chunks
+  final int missedChunks;
 
   SprintStatistics({
     required this.totalScheduled,
     required this.totalCompleted,
     required this.currentStreak,
     required this.longestStreak,
+    this.completedChunks = 0,
+    this.missedChunks = 0,
   });
 
   double get completionRate =>
@@ -182,6 +145,8 @@ class SprintStatistics {
       totalCompleted: 0,
       currentStreak: 0,
       longestStreak: 0,
+      completedChunks: 0,
+      missedChunks: 0,
     );
   }
 
@@ -199,6 +164,24 @@ class SprintStatistics {
       ..sort((a, b) => b.date.compareTo(a.date));
 
     final completedSprints = pastSprints.where((s) => s.completed).toList();
+    
+    // Calculate chunks/sets stats
+    int completedChunks = 0;
+    int missedChunks = 0;
+    
+    for (final sprint in pastSprints) {
+      completedChunks += sprint.completedSets;
+      if (sprint.targetSets != null) {
+        // If not completed or partially completed, add missing sets
+        if (!sprint.completed || sprint.completedSets < sprint.targetSets!) {
+           missedChunks += (sprint.targetSets! - sprint.completedSets);
+        }
+      } else {
+        // Legacy support: if no target sets but marked incomplete, count as 1 missing chunk? 
+        // Or assume legacy target was 1. Let's assume target was 1 for legacy.
+        if (!sprint.completed) missedChunks++;
+      }
+    }
 
     // Calculate current streak (consecutive completed sprints from most recent)
     int currentStreak = 0;
@@ -233,6 +216,78 @@ class SprintStatistics {
       totalCompleted: completedSprints.length,
       currentStreak: currentStreak,
       longestStreak: longestStreak,
+      completedChunks: completedChunks,
+      missedChunks: missedChunks,
     );
+  }
+}
+
+/// Helper class to generate and manage sprint schedules
+class SprintScheduler {
+  static const int sprintsPerMonth = 2; // Bi-weekly approximately
+
+  /// Generate sprint days for a given month
+  static List<DateTime> generateSprintDaysForMonth(int year, int month) {
+    final random = Random(year * 100 + month); // Determine seed based on month
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final days = <DateTime>[];
+
+    // Simple strategy: Divide month into 2 halves and pick a random day in each
+    // Day 1-15
+    final firstHalfDay = random.nextInt(15) + 1;
+    days.add(DateTime(year, month, firstHalfDay));
+
+    // Day 16-End
+    final secondHalfStart = 16;
+    final remainingDays = daysInMonth - secondHalfStart;
+    final secondHalfDay = secondHalfStart + random.nextInt(remainingDays + 1);
+    days.add(DateTime(year, month, secondHalfDay));
+
+    days.sort();
+    return days;
+  }
+  
+  /// check if scheduling is needed for this month
+  static bool needsSchedulingForMonth(
+      List<SprintSession> sprints, int year, int month) {
+    return !sprints.any((s) => s.date.year == year && s.date.month == month);
+  }
+
+  /// Get today's sprint session if exists
+  static SprintSession? getTodaysSprint(List<SprintSession> sprints) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    try {
+      return sprints.firstWhere((s) =>
+          s.date.year == today.year &&
+          s.date.month == today.month &&
+          s.date.day == today.day);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get upcoming sprints (including today)
+  static List<SprintSession> getUpcomingSprints(List<SprintSession> sprints) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final upcoming = sprints.where((s) {
+      final sDate = DateTime(s.date.year, s.date.month, s.date.day);
+      return sDate.isAfter(today) || sDate.isAtSameMomentAs(today);
+    }).toList();
+    upcoming.sort((a, b) => a.date.compareTo(b.date));
+    return upcoming;
+  }
+
+  /// Get past sprints
+  static List<SprintSession> getPastSprints(List<SprintSession> sprints) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final past = sprints.where((s) {
+      final sDate = DateTime(s.date.year, s.date.month, s.date.day);
+      return sDate.isBefore(today);
+    }).toList();
+    past.sort((a, b) => b.date.compareTo(a.date));
+    return past;
   }
 }

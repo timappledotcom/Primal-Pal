@@ -105,6 +105,13 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggle use imperial units
+  Future<void> setUseImperialUnits(bool useImperial) async {
+    _settings = _settings.copyWith(useImperialUnits: useImperial);
+    await _storageService.saveSettings(_settings);
+    notifyListeners();
+  }
+
   /// Toggle notifications enabled/disabled
   Future<void> toggleNotifications() async {
     _settings = _settings.copyWith(

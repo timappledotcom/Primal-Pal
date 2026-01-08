@@ -19,6 +19,9 @@ class AppSettings {
   /// Whether notifications are enabled
   final bool notificationsEnabled;
 
+  /// Whether to use Imperial units (Miles) instead of Metric (Km)
+  final bool useImperialUnits;
+
   /// Whether the user has seen the onboarding screen
   final bool hasSeenOnboarding;
 
@@ -28,6 +31,7 @@ class AppSettings {
     required this.activeWindowEnd,
     this.snacksPerDay = 6,
     this.notificationsEnabled = true,
+    this.useImperialUnits = false,
     this.hasSeenOnboarding = false,
   });
 
@@ -47,6 +51,7 @@ class AppSettings {
       activeWindowEnd: const TimeOfDay(hour: 20, minute: 0),
       snacksPerDay: 6,
       notificationsEnabled: true,
+      useImperialUnits: false,
       hasSeenOnboarding: false,
     );
   }
@@ -116,6 +121,7 @@ class AppSettings {
       ),
       snacksPerDay: json['snacksPerDay'] as int? ?? 6,
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+      useImperialUnits: json['useImperialUnits'] as bool? ?? false,
       hasSeenOnboarding: json['hasSeenOnboarding'] as bool? ?? false,
     );
   }
@@ -136,6 +142,7 @@ class AppSettings {
       'activeWindowEndMinute': activeWindowEnd.minute,
       'snacksPerDay': snacksPerDay,
       'notificationsEnabled': notificationsEnabled,
+      'useImperialUnits': useImperialUnits,
       'hasSeenOnboarding': hasSeenOnboarding,
     };
   }
@@ -147,6 +154,7 @@ class AppSettings {
     TimeOfDay? activeWindowEnd,
     int? snacksPerDay,
     bool? notificationsEnabled,
+    bool? useImperialUnits,
     bool? hasSeenOnboarding,
   }) {
     return AppSettings(
@@ -155,6 +163,7 @@ class AppSettings {
       activeWindowEnd: activeWindowEnd ?? this.activeWindowEnd,
       snacksPerDay: snacksPerDay ?? this.snacksPerDay,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      useImperialUnits: useImperialUnits ?? this.useImperialUnits,
       hasSeenOnboarding: hasSeenOnboarding ?? this.hasSeenOnboarding,
     );
   }
@@ -172,6 +181,20 @@ class AppSettings {
     final minute = time.minute.toString().padLeft(2, '0');
     final period = time.period == DayPeriod.am ? 'AM' : 'PM';
     return '$hour:$minute $period';
+  }
+  
+  /// Check if the given time is within the active window
+  bool isInActiveWindow(TimeOfDay time) {
+    final nowMinutes = time.hour * 60 + time.minute;
+    final startMinutes = activeWindowStart.hour * 60 + activeWindowStart.minute;
+    final endMinutes = activeWindowEnd.hour * 60 + activeWindowEnd.minute;
+    
+    // Handle case where window spans midnight (though not typical for this app)
+    if (endMinutes < startMinutes) {
+       return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
+    }
+    
+    return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
   }
 
   @override

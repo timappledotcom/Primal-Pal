@@ -4,3 +4,8 @@ export 'settings_screen.dart';
 export 'onboarding_screen.dart';
 export 'walk_history_screen.dart';
 export 'sprint_history_screen.dart';
+export 'dashboard_screen.dart';
+export 'walk_screen.dart';
+export 'sprint_screen.dart';
+export 'exercises_screen.dart';
+export 'statistics_screen.dart';

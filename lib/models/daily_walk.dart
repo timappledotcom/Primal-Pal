@@ -5,11 +5,15 @@ class DailyWalk {
   /// Total accumulated walking time in seconds for this day
   final int totalSeconds;
 
+  /// Accumulated distance in meters
+  final double distanceMeters;
+
   final String? notes;
 
   DailyWalk({
     required this.date,
     this.totalSeconds = 0,
+    this.distanceMeters = 0,
     this.notes,
   });
 
@@ -18,6 +22,9 @@ class DailyWalk {
 
   /// Duration in minutes (for backward compatibility and display)
   int get durationMinutes => (totalSeconds / 60).floor();
+
+  /// Distance in kilometers formatted string
+  String get formattedDistance => '${(distanceMeters / 1000).toStringAsFixed(2)} km';
 
   /// Get the date without time component (for comparison)
   DateTime get dateOnly => DateTime(date.year, date.month, date.day);
@@ -48,6 +55,7 @@ class DailyWalk {
     return DailyWalk(
       date: DateTime.parse(json['date'] as String),
       totalSeconds: totalSeconds,
+      distanceMeters: (json['distanceMeters'] as num?)?.toDouble() ?? 0.0,
       notes: json['notes'] as String?,
     );
   }
@@ -57,6 +65,7 @@ class DailyWalk {
     return {
       'date': date.toIso8601String(),
       'totalSeconds': totalSeconds,
+      'distanceMeters': distanceMeters,
       'notes': notes,
     };
   }
@@ -65,18 +74,23 @@ class DailyWalk {
   DailyWalk copyWith({
     DateTime? date,
     int? totalSeconds,
+    double? distanceMeters,
     String? notes,
   }) {
     return DailyWalk(
       date: date ?? this.date,
       totalSeconds: totalSeconds ?? this.totalSeconds,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
       notes: notes ?? this.notes,
     );
   }
 
   /// Add seconds to the accumulated time
-  DailyWalk addSeconds(int seconds) {
-    return copyWith(totalSeconds: totalSeconds + seconds);
+  DailyWalk addSeconds(int seconds, {double extraDistance = 0}) {
+    return copyWith(
+      totalSeconds: totalSeconds + seconds,
+      distanceMeters: distanceMeters + extraDistance,
+    );
   }
 
   /// Check if this walk is from today

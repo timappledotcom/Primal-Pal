@@ -238,6 +238,17 @@ class ExerciseProvider extends ChangeNotifier {
     if (_currentScheduledExercise != null) {
       final completedScheduled = _currentScheduledExercise!.markCompleted();
       await _storageService.updateScheduledExercise(completedScheduled);
+      await _storageService.logExerciseCompletion(completedScheduled);
+    } else {
+       // Log ad-hoc exercise completion
+       final adhocCompletion = ScheduledExercise(
+         exerciseId: exercise.id,
+         exerciseName: exercise.name,
+         scheduledTime: DateTime.now(),
+         notificationId: 0,
+         isCompleted: true,
+       );
+       await _storageService.logExerciseCompletion(adhocCompletion);
     }
 
     // Clear current exercise
@@ -319,5 +330,12 @@ class ExerciseProvider extends ChangeNotifier {
     _exercises.removeWhere((e) => e.id == exerciseId);
     await _storageService.saveExercises(_exercises);
     notifyListeners();
+  }
+
+  /// Get a random exercise based on current settings
+  Exercise? getRandomExercise(AppSettings settings) {
+    final available = getAvailableExercisesForToday(settings);
+    if (available.isEmpty) return null;
+    return (available..shuffle()).first;
   }
 }

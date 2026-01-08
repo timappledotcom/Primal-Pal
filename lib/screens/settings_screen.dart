@@ -51,6 +51,13 @@ class SettingsScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
+              // Measurement Units
+              _buildSectionTitle(context, 'UNITS'),
+              const SizedBox(height: 12),
+              _buildUnitSelector(context, provider, settings),
+
+              const SizedBox(height: 32),
+
               // Exercise Management
               _buildSectionTitle(context, 'MANAGE EXERCISES'),
               const SizedBox(height: 12),
@@ -180,6 +187,27 @@ class SettingsScreen extends StatelessWidget {
             }),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUnitSelector(
+    BuildContext context,
+    SettingsProvider provider,
+    AppSettings settings,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: SwitchListTile(
+        title: const Text('Use Imperial Units (Miles)'),
+        subtitle: const Text('Switch between Kilometers and Miles'),
+        value: settings.useImperialUnits,
+        activeColor: Theme.of(context).colorScheme.primary,
+        onChanged: (value) => provider.setUseImperialUnits(value),
       ),
     );
   }

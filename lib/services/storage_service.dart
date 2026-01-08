@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
@@ -8,7 +9,9 @@ class StorageService {
   static const String _settingsKey = 'app_settings';
   static const String _lastScheduledDateKey = 'last_scheduled_date';
   static const String _scheduledExercisesKey = 'scheduled_exercises';
+  static const String _exerciseHistoryKey = 'exercise_history';
   static const String _dailyWalksKey = 'daily_walks';
+
   static const String _sprintSessionsKey = 'sprint_sessions';
 
   SharedPreferences? _prefs;
@@ -193,6 +196,46 @@ class StorageService {
     await p.remove(_scheduledExercisesKey);
   }
 
+  // ============ EXERCISE HISTORY ============
+
+  /// Log a completed exercise to history
+  Future<void> logExerciseCompletion(ScheduledExercise exercise) async {
+    final p = await prefs;
+    final history = await loadExerciseHistory();
+    
+    final entry = ExerciseHistoryEntry(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      exerciseId: exercise.exerciseId,
+      exerciseName: exercise.exerciseName,
+      completedAt: DateTime.now(),
+    );
+    
+    history.add(entry);
+    
+    final jsonList = history.map((e) => e.toJson()).toList();
+    await p.setString(_exerciseHistoryKey, jsonEncode(jsonList));
+  }
+  
+  /// Load exercise history
+  Future<List<ExerciseHistoryEntry>> loadExerciseHistory() async {
+    final p = await prefs;
+    final jsonString = p.getString(_exerciseHistoryKey);
+    
+    if (jsonString == null) {
+      return [];
+    }
+    
+    try {
+      final jsonList = jsonDecode(jsonString) as List<dynamic>;
+      return jsonList
+          .map((json) => ExerciseHistoryEntry.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Error loading exercise history: $e');
+      return [];
+    }
+  }
+
   // ============ DAILY WALKS ============
 
   /// Save all daily walks
@@ -238,6 +281,7 @@ class StorageService {
   /// Log or update today's walk with accumulated time
   Future<void> logTodaysWalk({
     int? totalSeconds,
+    double? distanceMeters,
     String? notes,
   }) async {
     final walks = await loadDailyWalks();
@@ -250,6 +294,7 @@ class StorageService {
     final newWalk = DailyWalk(
       date: today,
       totalSeconds: totalSeconds ?? 0,
+      distanceMeters: distanceMeters ?? 0,
       notes: notes,
     );
 
@@ -263,7 +308,7 @@ class StorageService {
   }
 
   /// Add seconds to today's walk timer
-  Future<DailyWalk> addSecondsToTodaysWalk(int seconds) async {
+  Future<DailyWalk> addSecondsToTodaysWalk(int seconds, {double extraDistance = 0}) async {
     final walks = await loadDailyWalks();
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -273,10 +318,10 @@ class StorageService {
 
     DailyWalk updatedWalk;
     if (existingIndex != -1) {
-      updatedWalk = walks[existingIndex].addSeconds(seconds);
+      updatedWalk = walks[existingIndex].addSeconds(seconds, extraDistance: extraDistance);
       walks[existingIndex] = updatedWalk;
     } else {
-      updatedWalk = DailyWalk(date: today, totalSeconds: seconds);
+      updatedWalk = DailyWalk(date: today, totalSeconds: seconds, distanceMeters: extraDistance);
       walks.add(updatedWalk);
     }
 
@@ -366,7 +411,9 @@ class StorageService {
             s.date.month == day.month &&
             s.date.day == day.day);
         if (!exists) {
-          sprints.add(SprintSession(date: day));
+          final random = Random(day.millisecondsSinceEpoch);
+          final sets = 3 + random.nextInt(4); // 3 to 6
+          sprints.add(SprintSession(date: day, targetSets: sets));
           updated = true;
         }
       }
@@ -384,7 +431,9 @@ class StorageService {
             s.date.month == day.month &&
             s.date.day == day.day);
         if (!exists) {
-          sprints.add(SprintSession(date: day));
+          final random = Random(day.millisecondsSinceEpoch);
+          final sets = 3 + random.nextInt(4); // 3 to 6
+          sprints.add(SprintSession(date: day, targetSets: sets));
           updated = true;
         }
       }
@@ -396,11 +445,73 @@ class StorageService {
 
     return sprints;
   }
+  
+  /// Update a sprint session (e.g. tracking progress)
+  Future<void> updateSprintSession(SprintSession updatedSession) async {
+    final sprints = await loadSprintSessions();
+    final index = sprints.indexWhere((s) => 
+        s.date.year == updatedSession.date.year && 
+        s.date.month == updatedSession.date.month && 
+        s.date.day == updatedSession.date.day);
+        
+    if (index != -1) {
+      sprints[index] = updatedSession;
+      await saveSprintSessions(sprints);
+    }
+  }
 
   /// Get today's sprint session if scheduled
+  /// Also ensures target reps are generated if it's sprint day
   Future<SprintSession?> getTodaysSprint() async {
     final sprints = await loadSprintSessions();
-    return SprintScheduler.getTodaysSprint(sprints);
+    final session = SprintScheduler.getTodaysSprint(sprints);
+    
+    if (session != null && session.targetSets == null && !session.completed) {
+      // Generate random target sets (3-6)
+      final random = Random();
+      final target = 3 + random.nextInt(4); // 3, 4, 5, 6
+      
+      final index = sprints.indexWhere((s) => s.date == session.date);
+      if (index != -1) {
+        final updated = session.copyWith(targetSets: target);
+        sprints[index] = updated;
+        await saveSprintSessions(sprints);
+        return updated;
+      }
+    }
+    
+    return session;
+  }
+
+  /// Increment completed reps for today's sprint
+  Future<SprintSession?> incrementSprintRep() async {
+    final sprints = await loadSprintSessions();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final index = sprints.indexWhere((s) => s.dateOnly.isAtSameMomentAs(today));
+    if (index == -1) return null;
+
+    final session = sprints[index];
+    final currentReps = session.completedSets;
+    
+    // Don't increment if already completed everything (unless we want extra credit?)
+    // User requirement: "So if that day you were supposed to run 4, you would have run the timer 4 times."
+    // Let's allow incrementing but maybe check completion status.
+    
+    final updated = session.copyWith(
+      completedSets: currentReps + 1,
+    );
+    
+    sprints[index] = updated;
+    await saveSprintSessions(sprints);
+    
+    // Auto-complete if reached target?
+    // "Then everytime the timer slected runs out, it would count one of the reps."
+    // It doesn't explicitly say "auto mark complete", but implies the session is done when reps are done.
+    // I'll leave manual completion or check in UI. UIs usually handle "You're done!" logic.
+    
+    return updated;
   }
 
   /// Mark today's sprint as completed
