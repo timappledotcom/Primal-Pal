@@ -399,39 +399,43 @@ class _SprintScreenState extends State<SprintScreen> {
     if (isSprintDay && !isCompleted && _todaysSprint?.targetSets != null) {
       final target = _todaysSprint!.targetSets!;
       final current = _todaysSprint!.completedSets;
-      // If user hasn't started, maybe "Surprise Reps" or show it?
-      // Requirement: "never know how many you are doing until the time comes"
-      // This could mean: 
-      // 1. Hidden until first start? 
-      // 2. Or "until the day arrives".
-      // Given "on sprint day you never know... until the time comes", it probably means revealed on the day.
-      // So showing it now (on the day) is correct.
+      
+      final colorScheme = Theme.of(context).colorScheme;
       
       return Card(
-        color: Colors.orange.shade50,
+        color: colorScheme.primaryContainer,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
                Text(
                  'Today\'s Mission',
-                 style: Theme.of(context).textTheme.titleLarge,
+                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                 ),
                ),
                const SizedBox(height: 8),
                Text(
                  'Complete $target Sprints',
-                 style: Theme.of(context).textTheme.headlineSmall,
+                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                 ),
                ),
                const SizedBox(height: 16),
                LinearProgressIndicator(
                   value: target > 0 ? current / target : 0,
-                  backgroundColor: Colors.orange.withOpacity(0.2),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+                  backgroundColor: colorScheme.surface.withOpacity(0.5),
+                  valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
                   minHeight: 10,
                   borderRadius: BorderRadius.circular(5),
                ),
                const SizedBox(height: 8),
-               Text('$current of $target Completed'),
+               Text(
+                 '$current of $target Completed',
+                 style: TextStyle(
+                    color: colorScheme.onPrimaryContainer,
+                 ),
+               ),
             ],
           ),
         ),
@@ -439,7 +443,7 @@ class _SprintScreenState extends State<SprintScreen> {
     }
 
     return Card(
-      color: isSprintDay ? Colors.orange.shade50 : null,
+      color: isSprintDay ? Theme.of(context).colorScheme.primaryContainer : null,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/models.dart';
+import '../providers/providers.dart';
 import '../services/services.dart';
 
 class StatisticsScreen extends StatefulWidget {
@@ -24,16 +26,25 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadData();
+    // Listen for changes in exercises/sprints to update stats
+    final provider = context.read<ExerciseProvider>();
+    provider.addListener(_loadData);
   }
 
   @override
   void dispose() {
+    final provider = context.read<ExerciseProvider>();
+    provider.removeListener(_loadData);
     _tabController.dispose();
     super.dispose();
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    // Avoid setting state if not mounted
+    if (!mounted) return;
+    
+    // Don't set isLoading = true here to avoid flickering on every update
+    // setState(() => _isLoading = true); 
     
     // Load Walks
     final walks = await _storageService.loadDailyWalks();

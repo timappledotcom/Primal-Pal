@@ -25,7 +25,36 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
 
   Future<void> _loadScheduledExercises() async {
     setState(() => _isLoading = true);
-    final scheduled = await _storageService.loadScheduledExercises();
+    var scheduled = await _storageService.loadScheduledExercises();
+
+    // Reconciliation: Check history for completions that missed the schedule update
+    if (scheduled != null && scheduled.isNotEmpty) {
+      final history = await _storageService.loadExerciseHistory();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      final todaysHistory = history.where((h) {
+          final hDate = DateTime(h.completedAt.year, h.completedAt.month, h.completedAt.day);
+          return hDate.isAtSameMomentAs(today);
+      }).toList();
+
+      bool changed = false;
+      for (int i = 0; i < scheduled.length; i++) {
+        if (!scheduled[i].isCompleted) {
+           // Check if we have a history entry for this exercise ID
+           final hasCompletion = todaysHistory.any((h) => h.exerciseId == scheduled[i].exerciseId);
+           if (hasCompletion) {
+             scheduled[i] = scheduled[i].markCompleted();
+             changed = true;
+           }
+        }
+      }
+      
+      if (changed) {
+         await _storageService.saveScheduledExercises(scheduled);
+      }
+    }
+
     if (mounted) {
       setState(() {
         _scheduledExercises = scheduled ?? [];
@@ -35,9 +64,6 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
   }
 
   Future<void> _refreshExercises() async {
-      final exerciseProvider = context.read<ExerciseProvider>();
-      final settingsProvider = context.read<SettingsProvider>();
-      
       // Force reschedule if needed, or just reload?
       // Re-using logic from HomeScreen.
       // Logic: If needed, schedule. If already scheduled, just load.
@@ -96,21 +122,29 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
                                  onPressed: () {
                                     // Navigate to start
                                     final provider = context.read<ExerciseProvider>();
-                                    provider.setCurrentExercise(scheduled.exerciseId);
-                                    Navigator.push(
-                                      context, 
-                                      MaterialPageRoute(builder: (_) => const ActiveSessionScreen()),
-                                    ).then((_) => _refreshExercises()); // Refresh on return
+                                    final exercise = provider.getExerciseById(scheduled.exerciseId);
+                                    
+                                    if (exercise != null) {
+                                      provider.setCurrentExerciseObject(exercise, scheduledExercise: scheduled);
+                                      Navigator.push(
+                                        context, 
+                                        MaterialPageRoute(builder: (_) => const ActiveSessionScreen()),
+                                      ).then((_) => _refreshExercises()); // Refresh on return
+                                    }
                                  },
                                ),
                         onTap: () {
-                           // Navigate to exercise details or start?
+                           // Navigate to exercise details or start
                             final provider = context.read<ExerciseProvider>();
-                            provider.setCurrentExercise(scheduled.exerciseId);
-                            Navigator.push(
-                              context, 
-                              MaterialPageRoute(builder: (_) => const ActiveSessionScreen()),
-                            ).then((_) => _refreshExercises());
+                            final exercise = provider.getExerciseById(scheduled.exerciseId);
+                            
+                            if (exercise != null) {
+                              provider.setCurrentExerciseObject(exercise, scheduledExercise: scheduled);
+                              Navigator.push(
+                                context, 
+                                MaterialPageRoute(builder: (_) => const ActiveSessionScreen()),
+                              ).then((_) => _refreshExercises());
+                            }
                         },
                       ),
                     );
