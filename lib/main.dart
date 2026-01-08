@@ -58,6 +58,47 @@ class _PrimalPalAppState extends State<PrimalPalApp> {
       _exerciseProvider.init(),
       _settingsProvider.init(),
     ]);
+
+    // Check and schedule daily exercises if needed
+    await _checkDailySchedule();
+  }
+  
+  Future<void> _checkDailySchedule() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    // Load existing scheduled exercises
+    final existingSchedule = await widget.storageService.loadScheduledExercises();
+    
+    // Check if we need to schedule (list is empty, or first item is not from today)
+    bool needsScheduling = false;
+    
+    if (existingSchedule == null || existingSchedule.isEmpty) {
+      needsScheduling = true;
+    } else {
+      final firstScheduled = existingSchedule.first;
+      final scheduledDate = DateTime(
+        firstScheduled.scheduledTime.year,
+        firstScheduled.scheduledTime.month,
+        firstScheduled.scheduledTime.day,
+      );
+      
+      if (!scheduledDate.isAtSameMomentAs(today)) {
+        needsScheduling = true;
+      }
+    }
+    
+    if (needsScheduling && mounted) {
+      final availableExercises = _exerciseProvider.getAvailableExercisesForToday(_settingsProvider.settings);
+      
+      final newSchedule = await NotificationService().scheduleDailyNotifications(
+        availableExercises: availableExercises, 
+        settings: _settingsProvider.settings
+      );
+      
+      await widget.storageService.saveScheduledExercises(newSchedule);
+      debugPrint('Daily schedule updated with ${newSchedule.length} exercises.');
+    }
   }
 
   void _handleNotificationTap(String? exerciseId) {

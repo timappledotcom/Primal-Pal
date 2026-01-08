@@ -18,6 +18,7 @@ class _SprintScreenState extends State<SprintScreen> {
   SprintSession? _todaysSprint;
   SprintSession? _nextSprint;
   List<SprintSession> _pastSprints = [];
+  List<SprintSession> _futureSprints = []; // Added
   bool _isLoading = true;
 
   // Timer State
@@ -43,24 +44,117 @@ class _SprintScreenState extends State<SprintScreen> {
     await _storageService.ensureSprintsScheduled();
     
     final todaysSprint = await _storageService.getTodaysSprint();
-    final upcomingSprints = await _storageService.getUpcomingSprints();
-    final pastSprints = await _storageService.getPastSprints();
+    
+    final allSprints = await _storageService.loadSprintSessions();
+    final pastSprints = SprintScheduler.getPastSprints(allSprints);
+    final upcoming = SprintScheduler.getUpcomingSprints(allSprints);
 
     SprintSession? nextSprint;
-    if (upcomingSprints.isNotEmpty) {
-      nextSprint = upcomingSprints.firstWhere(
+    if (upcoming.isNotEmpty) {
+      nextSprint = upcoming.firstWhere(
         (s) => !s.completed,
-        orElse: () => upcomingSprints.first,
+        orElse: () => upcoming.first,
       );
     }
+    
+    // Filter out "nextSprint" if it is actually "today" (so we don't show it twice)
+    // Actually "upcoming" includes today.
+    final futureSprints = upcoming.where((s) => !s.isToday).toList();
 
     if (mounted) {
       setState(() {
         _todaysSprint = todaysSprint;
         _nextSprint = nextSprint;
         _pastSprints = pastSprints;
+        _futureSprints = futureSprints; // New field
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _showManualSprintDialog(BuildContext context) async {
+    int selectedReps = 4;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Start Extra Sprint Session'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Schedule a sprint session for today?'),
+                const SizedBox(height: 16),
+                Text('Target Reps: $selectedReps', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Slider(
+                  value: selectedReps.toDouble(),
+                  min: 3,
+                  max: 10,
+                  divisions: 7,
+                  label: selectedReps.toString(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedReps = value.round();
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('CANCEL'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('START'),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+    
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      await _storageService.addAdHocSprint(DateTime.now(), selectedReps);
+      await _loadSprintData(); // Reload UI
+    }
+  }
+
+  Future<void> _showRescheduleConfirmation(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reschedule Sprints?'),
+        content: const Text(
+          'This will randomize the schedule for any remaining sprints this month.\n\n'
+          'Completed sprints will not be affected.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('RESCHEDULE'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      await _storageService.rescheduleSprintsForMonth();
+      await _loadSprintData();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sprints rescheduled!')),
+        );
+      }
     }
   }
 
@@ -175,7 +269,32 @@ class _SprintScreenState extends State<SprintScreen> {
     final isCompleted = _todaysSprint?.completed ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sprint Session')),
+      appBar: AppBar(
+        title: const Text('Sprint Session'),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'reschedule') {
+                _showRescheduleConfirmation(context);
+              } else if (value == 'manual') {
+                _showManualSprintDialog(context);
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              return [
+                const PopupMenuItem<String>(
+                  value: 'manual',
+                  child: Text('Start Extra Sprint'),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'reschedule',
+                  child: Text('Reschedule Sprints'),
+                ),
+              ];
+            },
+          ),
+        ],
+      ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : ListView(
@@ -222,6 +341,33 @@ class _SprintScreenState extends State<SprintScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              
+              if (_futureSprints.isNotEmpty) ...[
+                Text('Upcoming Sessions', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Card(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _futureSprints.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                       final sprint = _futureSprints[index];
+                       int daysAway = sprint.dateOnly.difference(DateTime.now()).inDays;
+                       if (daysAway < 0) daysAway = 0; // Should not happen for future sprints
+                       
+                       return ListTile(
+                         leading: const Icon(Icons.calendar_today, color: Colors.orange),
+                         title: Text(
+                             '${_formatDate(sprint.date)} (Target: ${sprint.targetSets ?? "TBD"} reps)'
+                         ),
+                         subtitle: Text('In $daysAway days'),
+                       );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               
               // History Section
               if (_pastSprints.isNotEmpty) ...[
@@ -316,6 +462,17 @@ class _SprintScreenState extends State<SprintScreen> {
                        ),
                        if (_nextSprint != null && !isSprintDay)
                          Text('Next sprint: ${_formatDate(_nextSprint!.date)}'),
+                       if (!isSprintDay) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: () => _showManualSprintDialog(context),
+                            icon: const Icon(Icons.add_circle_outline, size: 16),
+                            label: const Text('Do Extra Sprint'),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                       ],
                     ],
                   ),
                 ),

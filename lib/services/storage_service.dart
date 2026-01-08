@@ -446,6 +446,89 @@ class StorageService {
     return sprints;
   }
   
+  /// Reschedule incomplete sprints for the current month
+  Future<void> rescheduleSprintsForMonth() async {
+    final sprints = await loadSprintSessions();
+    final now = DateTime.now();
+    
+    // Remove only INCOMPLETE sprints for the current month
+    sprints.removeWhere((s) => 
+      s.date.year == now.year && 
+      s.date.month == now.month && 
+      !s.completed
+    );
+    
+    // Now force regeneration.
+    // However, ensureSprintsScheduled only runs if NO sprints exist for the month.
+    // We need to manually generate missing slots.
+    
+    // Count existing (completed) sprints for this month
+    final completedCount = sprints.where((s) => 
+      s.date.year == now.year && 
+      s.date.month == now.month
+    ).length;
+    
+    final toSchedule = 2 - completedCount; // Assuming 2 per month
+    
+    if (toSchedule > 0) {
+       // Use randomize=true to get a fresh set of days
+       final newDays = SprintScheduler.generateSprintDaysForMonth(now.year, now.month, randomize: true);
+       
+       // Filter out days that might conflict with existing completed ones?
+       // Or just take the ones from 'newDays' that are in the future?
+       
+       int added = 0;
+       for (final day in newDays) {
+         if (added >= toSchedule) break;
+         
+         // Only add if date is in future (or today) AND doesn't conflict with existing completed
+         // Actually, if we just blindly add from newDays, we might duplicate.
+         
+         final exists = sprints.any((s) => 
+            s.date.year == day.year && 
+            s.date.month == day.month && 
+            s.date.day == day.day);
+            
+         if (!exists && !day.isBefore(DateTime(now.year, now.month, now.day))) {
+            final random = Random(day.millisecondsSinceEpoch);
+            final sets = 3 + random.nextInt(4);
+            sprints.add(SprintSession(date: day, targetSets: sets));
+            added++;
+         }
+       }
+       
+       // Fallback: if 'newDays' didn't give us valid future dates (e.g. late in month),
+       // pick random future days effectively.
+       if (added < toSchedule) {
+          final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+          final remainingDays = daysInMonth - now.day;
+          
+          if (remainingDays > 0) {
+             final random = Random();
+             for (int i = 0; i < (toSchedule - added); i++) {
+                final dayOffset = random.nextInt(remainingDays) + 1; // 1 to remaining
+                final d = DateTime(now.year, now.month, now.day + dayOffset);
+                
+                 final exists = sprints.any((s) => 
+                    s.date.year == d.year && 
+                    s.date.month == d.month && 
+                    s.date.day == d.day);
+                 
+                 if (!exists) {
+                    final r = Random(d.millisecondsSinceEpoch);
+                    final sets = 3 + r.nextInt(4);
+                    sprints.add(SprintSession(date: d, targetSets: sets));
+                 }
+             }
+          }
+       }
+    }
+    
+    // Re-sort
+    sprints.sort((a,b) => a.date.compareTo(b.date));
+    await saveSprintSessions(sprints);
+  }
+  
   /// Update a sprint session (e.g. tracking progress)
   Future<void> updateSprintSession(SprintSession updatedSession) async {
     final sprints = await loadSprintSessions();
@@ -458,6 +541,33 @@ class StorageService {
       sprints[index] = updatedSession;
       await saveSprintSessions(sprints);
     }
+  }
+
+  /// Add a manual/ad-hoc sprint session
+  Future<void> addAdHocSprint(DateTime date, int targetSets) async {
+    final sprints = await loadSprintSessions();
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    
+    // Check if one already exists
+    final index = sprints.indexWhere((s) => 
+        s.date.year == dateOnly.year && 
+        s.date.month == dateOnly.month && 
+        s.date.day == dateOnly.day);
+        
+    final newSession = SprintSession(
+      date: dateOnly,
+      targetSets: targetSets,
+    );
+        
+    if (index != -1) {
+      // Replace existing (user explicitly asked for this)
+      sprints[index] = newSession;
+    } else {
+      sprints.add(newSession);
+    }
+    
+    sprints.sort((a,b) => a.date.compareTo(b.date));
+    await saveSprintSessions(sprints);
   }
 
   /// Get today's sprint session if scheduled

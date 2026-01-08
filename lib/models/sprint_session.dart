@@ -227,8 +227,11 @@ class SprintScheduler {
   static const int sprintsPerMonth = 2; // Bi-weekly approximately
 
   /// Generate sprint days for a given month
-  static List<DateTime> generateSprintDaysForMonth(int year, int month) {
-    final random = Random(year * 100 + month); // Determine seed based on month
+  static List<DateTime> generateSprintDaysForMonth(int year, int month, {bool randomize = false}) {
+    // If randomize is true, use current timestamp as seed, otherwise specific month seed
+    final seed = randomize ? null : (year * 100 + month);
+    final random = Random(seed);
+    
     final daysInMonth = DateTime(year, month + 1, 0).day;
     final days = <DateTime>[];
 
