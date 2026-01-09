@@ -101,9 +101,34 @@ class _PrimalPalAppState extends State<PrimalPalApp> {
     }
   }
 
-  void _handleNotificationTap(String? exerciseId) {
+  void _handleNotificationTap(String? exerciseId) async {
     if (exerciseId != null) {
-      _exerciseProvider.setCurrentExercise(exerciseId);
+      // Load scheduled exercises to find the matching one
+      final scheduled = await widget.storageService.loadScheduledExercises();
+      ScheduledExercise? matchingScheduled;
+      
+      if (scheduled != null) {
+        try {
+          matchingScheduled = scheduled.firstWhere(
+            (s) => s.exerciseId == exerciseId && !s.isCompleted,
+          );
+        } catch (_) {
+          // No matching scheduled exercise found, that's okay
+        }
+      }
+      
+      // Get the exercise and set it with the scheduled exercise context
+      final exercise = _exerciseProvider.getExerciseById(exerciseId);
+      if (exercise != null) {
+        _exerciseProvider.setCurrentExerciseObject(
+          exercise, 
+          scheduledExercise: matchingScheduled,
+        );
+      } else {
+        // Fallback: just set by ID
+        _exerciseProvider.setCurrentExercise(exerciseId);
+      }
+      
       // Navigation will be handled by the navigator key
       _navigatorKey.currentState?.push(
         MaterialPageRoute(

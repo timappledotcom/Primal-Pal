@@ -1,7 +1,7 @@
 name: primal_pal
 description: "Greasing the Groove fitness app - Random exercise snacks throughout the day"
 publish_to: 'none'
-version: 1.5.4+11
+version: 1.5.5+12
 
 environment:
   sdk: ^3.5.0
@@ -16,6 +16,7 @@ dependencies:
   timezone: ^0.10.1
   permission_handler: ^12.0.1
   geolocator: ^14.0.2
+  wakelock_plus: ^1.2.8
 
 dev_dependencies:
   flutter_test:

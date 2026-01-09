@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
@@ -44,6 +45,8 @@ class _WalkScreenState extends State<WalkScreen> {
   void dispose() {
     _walkTimer?.cancel();
     _positionStream?.cancel();
+    // Ensure wakelock is disabled when screen is disposed
+    WakelockPlus.disable();
     super.dispose();
   }
 
@@ -83,6 +86,13 @@ class _WalkScreenState extends State<WalkScreen> {
   }
 
   Future<void> _startWalkTimer() async {
+    // Enable wakelock to keep screen and timer active
+    try {
+      await WakelockPlus.enable();
+    } catch (e) {
+      debugPrint('Failed to enable wakelock: $e');
+    }
+
     // 1. Permission Check
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -161,6 +171,13 @@ class _WalkScreenState extends State<WalkScreen> {
     
     _positionStream?.cancel();
     _positionStream = null;
+    
+    // Disable wakelock when timer stops
+    try {
+      await WakelockPlus.disable();
+    } catch (e) {
+      debugPrint('Failed to disable wakelock: $e');
+    }
     
     // Save the walk
     if (_walkStartTime != null) {
