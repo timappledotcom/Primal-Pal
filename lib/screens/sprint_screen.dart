@@ -1,8 +1,39 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For HapticFeedback
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../models/models.dart';
 import '../services/services.dart';
+
+// Top-level callback for sprint foreground task
+@pragma('vm:entry-point')
+void sprintStartCallback() {
+  FlutterForegroundTask.setTaskHandler(SprintTaskHandler());
+}
+
+class SprintTaskHandler extends TaskHandler {
+  @override
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {}
+
+  @override
+  void onRepeatEvent(DateTime timestamp) {
+    FlutterForegroundTask.updateService(
+      notificationTitle: 'Sprint Timer Active',
+      notificationText: 'Sprint session in progress...',
+    );
+  }
+
+  @override
+  Future<void> onDestroy(DateTime timestamp) async {}
+
+  @override
+  void onNotificationButtonPressed(String id) {}
+
+  @override
+  void onNotificationPressed() {
+    FlutterForegroundTask.launchApp('/sprint');
+  }
+}
 
 class SprintScreen extends StatefulWidget {
   const SprintScreen({super.key});
@@ -30,12 +61,37 @@ class _SprintScreenState extends State<SprintScreen> {
   @override
   void initState() {
     super.initState();
+    _initForegroundTask();
     _loadSprintData();
+  }
+
+  void _initForegroundTask() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'sprint_tracking',
+        channelName: 'Sprint Tracking',
+        channelDescription: 'Notification shown during sprint timer',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: true,
+        playSound: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(5000),
+        autoRunOnBoot: false,
+        autoRunOnMyPackageReplaced: false,
+        allowWakeLock: true,
+        allowWifiLock: false,
+      ),
+    );
   }
 
   @override
   void dispose() {
     _sprintTimer?.cancel();
+    FlutterForegroundTask.stopService();
     super.dispose();
   }
 
@@ -166,8 +222,19 @@ class _SprintScreenState extends State<SprintScreen> {
     }
   }
 
-  void _startTimer(int duration) {
+  void _startTimer(int duration) async {
     if (_todaysSprint == null || (_todaysSprint!.completed)) return;
+    
+    // Start foreground service
+    if (await FlutterForegroundTask.isRunningService) {
+      await FlutterForegroundTask.restartService();
+    } else {
+      await FlutterForegroundTask.startService(
+        notificationTitle: 'Sprint Timer Active',
+        notificationText: 'Sprint session in progress...',
+        callback: sprintStartCallback,
+      );
+    }
     
     // Check if we already did enough reps? 
     // Actually, maybe user wants to do more? But "Mark Complete" usually appears.
@@ -190,8 +257,9 @@ class _SprintScreenState extends State<SprintScreen> {
     });
   }
 
-  void _cancelTimer() {
+  void _cancelTimer() async {
     _sprintTimer?.cancel();
+    await FlutterForegroundTask.stopService();
     setState(() {
       _isTimerRunning = false;
       _remainingSeconds = 0;
@@ -200,6 +268,7 @@ class _SprintScreenState extends State<SprintScreen> {
 
   Future<void> _timerFinished() async {
     _sprintTimer?.cancel();
+    await FlutterForegroundTask.stopService();
     setState(() {
       _isTimerRunning = false;
     });
@@ -268,8 +337,9 @@ class _SprintScreenState extends State<SprintScreen> {
     final isSprintDay = _todaysSprint != null;
     final isCompleted = _todaysSprint?.completed ?? false;
 
-    return Scaffold(
-      appBar: AppBar(
+    return WithForegroundTask(
+      child: Scaffold(
+        appBar: AppBar(
         title: const Text('Sprint Session'),
         actions: [
           PopupMenuButton<String>(
@@ -392,6 +462,7 @@ class _SprintScreenState extends State<SprintScreen> {
               ],
             ],
           ),
+      ),
     );
   }
 

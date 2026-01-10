@@ -16,6 +16,8 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:label="Primal Pal"
@@ -49,6 +51,12 @@
         <receiver 
             android:exported="false" 
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        
+        <!-- Foreground service for keeping walk/sprint tracking running -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
         
         <!-- Boot receiver to reschedule notifications after device restart -->
         <receiver 

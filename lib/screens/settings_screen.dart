@@ -206,7 +206,7 @@ class SettingsScreen extends StatelessWidget {
         title: const Text('Use Imperial Units (Miles)'),
         subtitle: const Text('Switch between Kilometers and Miles'),
         value: settings.useImperialUnits,
-        activeColor: Theme.of(context).colorScheme.primary,
+        activeThumbColor: Theme.of(context).colorScheme.primary,
         onChanged: (value) => provider.setUseImperialUnits(value),
       ),
     );

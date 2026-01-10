@@ -3,9 +3,49 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/services.dart';
+
+// Top-level callback for foreground task
+@pragma('vm:entry-point')
+void startCallback() {
+  FlutterForegroundTask.setTaskHandler(WalkTaskHandler());
+}
+
+class WalkTaskHandler extends TaskHandler {
+  @override
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+    // Called when the foreground service starts
+  }
+
+  @override
+  void onRepeatEvent(DateTime timestamp) {
+    // This is called every 5 seconds (as configured in ForegroundTaskOptions)
+    // Update notification if needed
+    FlutterForegroundTask.updateService(
+      notificationTitle: 'Walk Tracking Active',
+      notificationText: 'Tracking your walk...',
+    );
+  }
+
+  @override
+  Future<void> onDestroy(DateTime timestamp) async {
+    // Called when the foreground service stops
+  }
+
+  @override
+  void onNotificationButtonPressed(String id) {
+    // Handle notification button press if you add buttons
+  }
+
+  @override
+  void onNotificationPressed() {
+    // Called when the notification is pressed
+    FlutterForegroundTask.launchApp('/walk');
+  }
+}
 
 class WalkScreen extends StatefulWidget {
   const WalkScreen({super.key});
@@ -37,8 +77,32 @@ class _WalkScreenState extends State<WalkScreen> {
   @override
   void initState() {
     super.initState();
+    _initForegroundTask();
     _loadTodaysWalk();
     _loadHistoryData();
+  }
+
+  void _initForegroundTask() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'walk_tracking',
+        channelName: 'Walk Tracking',
+        channelDescription: 'Notification shown during walk tracking',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: true,
+        playSound: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(5000),
+        autoRunOnBoot: false,
+        autoRunOnMyPackageReplaced: false,
+        allowWakeLock: true,
+        allowWifiLock: false,
+      ),
+    );
   }
 
   @override
@@ -47,6 +111,8 @@ class _WalkScreenState extends State<WalkScreen> {
     _positionStream?.cancel();
     // Ensure wakelock is disabled when screen is disposed
     WakelockPlus.disable();
+    // Stop foreground service if running
+    FlutterForegroundTask.stopService();
     super.dispose();
   }
 
@@ -91,6 +157,17 @@ class _WalkScreenState extends State<WalkScreen> {
       await WakelockPlus.enable();
     } catch (e) {
       debugPrint('Failed to enable wakelock: $e');
+    }
+
+    // Start foreground service
+    if (await FlutterForegroundTask.isRunningService) {
+      await FlutterForegroundTask.restartService();
+    } else {
+      await FlutterForegroundTask.startService(
+        notificationTitle: 'Walk Tracking Active',
+        notificationText: 'Tracking your walk...',
+        callback: startCallback,
+      );
     }
 
     // 1. Permission Check
@@ -172,6 +249,9 @@ class _WalkScreenState extends State<WalkScreen> {
     _positionStream?.cancel();
     _positionStream = null;
     
+    // Stop foreground service
+    await FlutterForegroundTask.stopService();
+    
     // Disable wakelock when timer stops
     try {
       await WakelockPlus.disable();
@@ -238,9 +318,10 @@ class _WalkScreenState extends State<WalkScreen> {
     final settingsProvider = context.watch<SettingsProvider>();
     final useImperial = settingsProvider.settings.useImperialUnits;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Daily Walk')),
-      body: Column(
+    return WithForegroundTask(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Daily Walk')),
+        body: Column(
         children: [
           // Timer Section (Top)
           Container(
@@ -346,6 +427,7 @@ class _WalkScreenState extends State<WalkScreen> {
                   ),
           ),
         ],
+      ),
       ),
     );
   }
