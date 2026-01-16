@@ -111,13 +111,47 @@ class NotificationService {
       settings.activeWindowEnd.minute,
     );
 
-    // Generate random times within the active window
-    final scheduleTimes = _generateRandomTimes(
-      windowStart: windowStart,
-      windowEnd: windowEnd,
-      count: settings.snacksPerDay,
-      random: random,
-    );
+    // Calculate midpoint and split counts
+    final totalDuration = windowEnd.difference(windowStart);
+    // If window is invalid (end before start), do nothing
+    if (totalDuration.isNegative) return [];
+
+    final midpoint =
+        windowStart.add(Duration(minutes: totalDuration.inMinutes ~/ 2));
+
+    // Add a small buffer around midpoint so they don't overlap too closely
+    // Only apply buffer if we have enough time (at least 2 hours)
+    final bufferMinutes = totalDuration.inHours >= 2 ? 15 : 0;
+
+    final morningEnd = midpoint.subtract(Duration(minutes: bufferMinutes));
+    final afternoonStart = midpoint.add(Duration(minutes: bufferMinutes));
+
+    // Split the snacks count: half in morning, half in afternoon
+    // If odd, morning gets one more
+    final morningCount = (settings.snacksPerDay / 2).ceil();
+    final afternoonCount = settings.snacksPerDay - morningCount;
+
+    final scheduleTimes = <DateTime>[];
+
+    // Generate random times for morning
+    if (morningCount > 0) {
+      scheduleTimes.addAll(_generateRandomTimes(
+        windowStart: windowStart,
+        windowEnd: morningEnd,
+        count: morningCount,
+        random: random,
+      ));
+    }
+
+    // Generate random times for afternoon
+    if (afternoonCount > 0) {
+      scheduleTimes.addAll(_generateRandomTimes(
+        windowStart: afternoonStart,
+        windowEnd: windowEnd,
+        count: afternoonCount,
+        random: random,
+      ));
+    }
 
     // Filter out times that have already passed
     final futureTimes =

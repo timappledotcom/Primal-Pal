@@ -1,7 +1,7 @@
 name: primal_pal
 description: "Greasing the Groove fitness app - Random exercise snacks throughout the day"
 publish_to: 'none'
-version: 1.5.6+13
+version: 1.5.7+14
 
 environment:
   sdk: ^3.5.0
