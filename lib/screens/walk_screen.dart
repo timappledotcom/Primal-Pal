@@ -159,18 +159,7 @@ class _WalkScreenState extends State<WalkScreen> {
       debugPrint('Failed to enable wakelock: $e');
     }
 
-    // Start foreground service
-    if (await FlutterForegroundTask.isRunningService) {
-      await FlutterForegroundTask.restartService();
-    } else {
-      await FlutterForegroundTask.startService(
-        notificationTitle: 'Walk Tracking Active',
-        notificationText: 'Tracking your walk...',
-        callback: startCallback,
-      );
-    }
-
-    // 1. Permission Check
+    // 1. Permission Check FIRST (required before starting foreground service with location type on SDK 36+)
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (mounted) {
@@ -194,6 +183,20 @@ class _WalkScreenState extends State<WalkScreen> {
        ScaffoldMessenger.of(context).showSnackBar(
            const SnackBar(content: Text('Location permissions permanently denied. Tracking time only.')),
        );
+    }
+
+    // 2. Start foreground service AFTER permission is granted
+    // Only start with location type if we have location permission
+    if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+      if (await FlutterForegroundTask.isRunningService) {
+        await FlutterForegroundTask.restartService();
+      } else {
+        await FlutterForegroundTask.startService(
+          notificationTitle: 'Walk Tracking Active',
+          notificationText: 'Tracking your walk...',
+          callback: startCallback,
+        );
+      }
     }
 
     setState(() {
