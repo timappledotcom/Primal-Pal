@@ -105,6 +105,20 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Set morning reminder time
+  Future<void> setMorningReminderTime(TimeOfDay time) async {
+    _settings = _settings.copyWith(morningReminderTime: time);
+    await _storageService.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  /// Set afternoon reminder time
+  Future<void> setAfternoonReminderTime(TimeOfDay time) async {
+    _settings = _settings.copyWith(afternoonReminderTime: time);
+    await _storageService.saveSettings(_settings);
+    notifyListeners();
+  }
+
   /// Toggle use imperial units
   Future<void> setUseImperialUnits(bool useImperial) async {
     _settings = _settings.copyWith(useImperialUnits: useImperial);

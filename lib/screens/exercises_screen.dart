@@ -16,6 +16,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
   final StorageService _storageService = StorageService();
   List<ScheduledExercise> _scheduledExercises = [];
   bool _isLoading = true;
+  bool _morningExpanded = true;
+  bool _afternoonExpanded = true;
 
   @override
   void initState() {
@@ -27,11 +29,50 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
     setState(() => _isLoading = true);
     var scheduled = await _storageService.loadScheduledExercises();
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    bool needsReschedule = false;
+
+    // Check for stale data or missing session field
+    if (scheduled == null || scheduled.isEmpty) {
+      needsReschedule = true;
+    } else {
+      final firstTime = scheduled.first.scheduledTime;
+      final firstDate =
+          DateTime(firstTime.year, firstTime.month, firstTime.day);
+      if (!firstDate.isAtSameMomentAs(today)) {
+        needsReschedule = true;
+      }
+      // Check if sessions are properly assigned (not all in one session)
+      final hasMorning = scheduled.any((e) => e.session == 'morning');
+      final hasAfternoon = scheduled.any((e) => e.session == 'afternoon');
+      if (!hasMorning || !hasAfternoon) {
+        // Old data without proper session assignment
+        needsReschedule = true;
+      }
+    }
+
+    if (needsReschedule && mounted) {
+      final settingsProvider = context.read<SettingsProvider>();
+      final exerciseProvider = context.read<ExerciseProvider>();
+      final available = exerciseProvider
+          .getAvailableExercisesForToday(settingsProvider.settings);
+
+      if (available.isNotEmpty) {
+        scheduled = await NotificationService().scheduleDailyNotifications(
+          availableExercises: available,
+          settings: settingsProvider.settings,
+        );
+        await _storageService.saveScheduledExercises(scheduled);
+      } else {
+        scheduled = [];
+      }
+    }
+
     // Reconciliation: Check history for completions that missed the schedule update
     if (scheduled != null && scheduled.isNotEmpty) {
       final history = await _storageService.loadExerciseHistory();
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
+      final exerciseList = scheduled!; // Non-null assertion for the block
 
       final todaysHistory = history.where((h) {
         final hDate = DateTime(
@@ -40,21 +81,22 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
       }).toList();
 
       bool changed = false;
-      for (int i = 0; i < scheduled.length; i++) {
-        if (!scheduled[i].isCompleted) {
+      for (int i = 0; i < exerciseList.length; i++) {
+        if (!exerciseList[i].isCompleted) {
           // Check if we have a history entry for this exercise ID
           final hasCompletion =
-              todaysHistory.any((h) => h.exerciseId == scheduled[i].exerciseId);
+              todaysHistory.any((h) => h.exerciseId == exerciseList[i].exerciseId);
           if (hasCompletion) {
-            scheduled[i] = scheduled[i].markCompleted();
+            exerciseList[i] = exerciseList[i].markCompleted();
             changed = true;
           }
         }
       }
 
       if (changed) {
-        await _storageService.saveScheduledExercises(scheduled);
+        await _storageService.saveScheduledExercises(exerciseList);
       }
+      scheduled = exerciseList;
     }
 
     if (mounted) {
@@ -95,59 +137,130 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
 
   Widget _buildGroupedList(BuildContext context) {
     final settings = context.watch<SettingsProvider>().settings;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
 
-    final windowStart = DateTime(today.year, today.month, today.day,
-        settings.activeWindowStart.hour, settings.activeWindowStart.minute);
-
-    final windowEnd = DateTime(today.year, today.month, today.day,
-        settings.activeWindowEnd.hour, settings.activeWindowEnd.minute);
-
-    final duration = windowEnd.difference(windowStart);
-    // Determine midpoint for split
-    final midpoint = duration.isNegative
-        ? DateTime(today.year, today.month, today.day, 12, 0)
-        : windowStart.add(Duration(minutes: duration.inMinutes ~/ 2));
-
+    // Group by session field
     final morningExercises = _scheduledExercises
-        .where((e) => e.scheduledTime.isBefore(midpoint))
+        .where((e) => e.session == 'morning')
         .toList();
 
     final afternoonExercises = _scheduledExercises
-        .where((e) => !e.scheduledTime.isBefore(midpoint))
+        .where((e) => e.session == 'afternoon')
         .toList();
 
-    morningExercises.sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
-    afternoonExercises
-        .sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
+    // Check completion status for each session
+    final morningComplete = morningExercises.isNotEmpty && 
+        morningExercises.every((e) => e.isCompleted);
+    final afternoonComplete = afternoonExercises.isNotEmpty && 
+        afternoonExercises.every((e) => e.isCompleted);
+
+    // Count completed exercises
+    final morningCompletedCount = morningExercises.where((e) => e.isCompleted).length;
+    final afternoonCompletedCount = afternoonExercises.where((e) => e.isCompleted).length;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         if (morningExercises.isNotEmpty) ...[
-          _buildSectionHeader(context, 'Morning Session'),
-          ...morningExercises.map((e) => _buildExerciseCard(context, e)),
-          const SizedBox(height: 24),
+          _buildCollapsibleSection(
+            context,
+            title: 'Morning Session',
+            reminderTime: settings.morningReminderTime,
+            isComplete: morningComplete,
+            completedCount: morningCompletedCount,
+            totalCount: morningExercises.length,
+            isExpanded: _morningExpanded,
+            onToggle: () => setState(() => _morningExpanded = !_morningExpanded),
+            isMorning: true,
+          ),
+          if (_morningExpanded)
+            ...morningExercises.map((e) => _buildExerciseCard(context, e)),
+          const SizedBox(height: 16),
         ],
         if (afternoonExercises.isNotEmpty) ...[
-          _buildSectionHeader(context, 'Afternoon Session'),
-          ...afternoonExercises.map((e) => _buildExerciseCard(context, e)),
-          const SizedBox(height: 24), // Bottom padding
+          _buildCollapsibleSection(
+            context,
+            title: 'Afternoon Session',
+            reminderTime: settings.afternoonReminderTime,
+            isComplete: afternoonComplete,
+            completedCount: afternoonCompletedCount,
+            totalCount: afternoonExercises.length,
+            isExpanded: _afternoonExpanded,
+            onToggle: () => setState(() => _afternoonExpanded = !_afternoonExpanded),
+            isMorning: false,
+          ),
+          if (_afternoonExpanded)
+            ...afternoonExercises.map((e) => _buildExerciseCard(context, e)),
+          const SizedBox(height: 16),
         ],
       ],
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0, left: 4.0),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).primaryColor,
+  Widget _buildCollapsibleSection(
+    BuildContext context, {
+    required String title,
+    required TimeOfDay reminderTime,
+    required bool isComplete,
+    required int completedCount,
+    required int totalCount,
+    required bool isExpanded,
+    required VoidCallback onToggle,
+    required bool isMorning,
+  }) {
+    final baseColor = isComplete 
+        ? Colors.green 
+        : (isMorning ? Colors.orange : Colors.blue);
+
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        decoration: BoxDecoration(
+          color: baseColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            Icon(
+              isComplete 
+                  ? Icons.check_circle 
+                  : (isMorning ? Icons.wb_sunny : Icons.nights_stay),
+              color: Colors.white,
+              size: 24,
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Text(
+                    isComplete 
+                        ? 'All $totalCount completed! ✓' 
+                        : '$completedCount/$totalCount done • Reminder ${reminderTime.format(context)}',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              isExpanded ? Icons.expand_less : Icons.expand_more,
+              color: Colors.white,
+              size: 28,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -156,7 +269,7 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
     final isCompleted = scheduled.isCompleted;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: isCompleted
@@ -174,11 +287,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
             color: isCompleted ? Colors.grey : null,
           ),
         ),
-        subtitle: Text(
-          'Scheduled for ${TimeOfDay.fromDateTime(scheduled.scheduledTime).format(context)}',
-        ),
         trailing: isCompleted
-            ? null
+            ? const Icon(Icons.check_circle, color: Colors.green)
             : IconButton(
                 icon: const Icon(Icons.check_circle_outline),
                 onPressed: () => _onExerciseTap(context, scheduled),

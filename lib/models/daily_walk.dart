@@ -117,6 +117,7 @@ class WalkStatistics {
   final int totalDays;
   final int completedDays;
   final int totalSeconds;
+  final double totalDistanceMeters;
   final int currentStreak;
   final int longestStreak;
   final DateTime? periodStart;
@@ -126,6 +127,7 @@ class WalkStatistics {
     required this.totalDays,
     required this.completedDays,
     required this.totalSeconds,
+    required this.totalDistanceMeters,
     required this.currentStreak,
     required this.longestStreak,
     this.periodStart,
@@ -146,6 +148,20 @@ class WalkStatistics {
   /// Total minutes walked
   int get totalMinutes => (totalSeconds / 60).floor();
 
+  /// Total distance in kilometers
+  double get totalDistanceKm => totalDistanceMeters / 1000;
+
+  /// Format total time as HH:MM:SS or MM:SS
+  String get formattedTotalTime {
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m ${seconds}s';
+  }
+
   /// Format average time as MM:SS
   String get formattedAverageTime {
     final avgSeconds = averageDurationSeconds.round();
@@ -160,6 +176,7 @@ class WalkStatistics {
       totalDays: 0,
       completedDays: 0,
       totalSeconds: 0,
+      totalDistanceMeters: 0,
       currentStreak: 0,
       longestStreak: 0,
     );
@@ -181,6 +198,10 @@ class WalkStatistics {
     final totalSeconds = completedWalks.fold<int>(
       0,
       (sum, w) => sum + w.totalSeconds,
+    );
+    final totalDistanceMeters = completedWalks.fold<double>(
+      0,
+      (sum, w) => sum + w.distanceMeters,
     );
 
     // Calculate current streak (consecutive days from today)
@@ -223,6 +244,7 @@ class WalkStatistics {
       totalDays: walks.length,
       completedDays: completedWalks.length,
       totalSeconds: totalSeconds,
+      totalDistanceMeters: totalDistanceMeters,
       currentStreak: currentStreak,
       longestStreak: longestStreak,
       periodStart: periodStart,

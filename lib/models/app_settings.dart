@@ -25,6 +25,12 @@ class AppSettings {
   /// Whether the user has seen the onboarding screen
   final bool hasSeenOnboarding;
 
+  /// Time for morning session reminder
+  final TimeOfDay morningReminderTime;
+
+  /// Time for afternoon session reminder
+  final TimeOfDay afternoonReminderTime;
+
   AppSettings({
     required this.sportDays,
     required this.activeWindowStart,
@@ -33,6 +39,8 @@ class AppSettings {
     this.notificationsEnabled = true,
     this.useImperialUnits = false,
     this.hasSeenOnboarding = false,
+    this.morningReminderTime = const TimeOfDay(hour: 8, minute: 0),
+    this.afternoonReminderTime = const TimeOfDay(hour: 13, minute: 0),
   });
 
   /// Default settings with sensible initial values
@@ -53,6 +61,8 @@ class AppSettings {
       notificationsEnabled: true,
       useImperialUnits: false,
       hasSeenOnboarding: false,
+      morningReminderTime: const TimeOfDay(hour: 8, minute: 0),
+      afternoonReminderTime: const TimeOfDay(hour: 13, minute: 0),
     );
   }
 
@@ -123,6 +133,14 @@ class AppSettings {
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
       useImperialUnits: json['useImperialUnits'] as bool? ?? false,
       hasSeenOnboarding: json['hasSeenOnboarding'] as bool? ?? false,
+      morningReminderTime: TimeOfDay(
+        hour: json['morningReminderHour'] as int? ?? 8,
+        minute: json['morningReminderMinute'] as int? ?? 0,
+      ),
+      afternoonReminderTime: TimeOfDay(
+        hour: json['afternoonReminderHour'] as int? ?? 13,
+        minute: json['afternoonReminderMinute'] as int? ?? 0,
+      ),
     );
   }
 
@@ -144,6 +162,10 @@ class AppSettings {
       'notificationsEnabled': notificationsEnabled,
       'useImperialUnits': useImperialUnits,
       'hasSeenOnboarding': hasSeenOnboarding,
+      'morningReminderHour': morningReminderTime.hour,
+      'morningReminderMinute': morningReminderTime.minute,
+      'afternoonReminderHour': afternoonReminderTime.hour,
+      'afternoonReminderMinute': afternoonReminderTime.minute,
     };
   }
 
@@ -156,6 +178,8 @@ class AppSettings {
     bool? notificationsEnabled,
     bool? useImperialUnits,
     bool? hasSeenOnboarding,
+    TimeOfDay? morningReminderTime,
+    TimeOfDay? afternoonReminderTime,
   }) {
     return AppSettings(
       sportDays: sportDays ?? Map.from(this.sportDays),
@@ -165,6 +189,8 @@ class AppSettings {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       useImperialUnits: useImperialUnits ?? this.useImperialUnits,
       hasSeenOnboarding: hasSeenOnboarding ?? this.hasSeenOnboarding,
+      morningReminderTime: morningReminderTime ?? this.morningReminderTime,
+      afternoonReminderTime: afternoonReminderTime ?? this.afternoonReminderTime,
     );
   }
 

@@ -16,10 +16,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   final StorageService _storageService = StorageService();
 
   // Data
+  List<DailyWalk> _allWalks = [];
   WalkStatistics _walkStats = WalkStatistics.empty();
   SprintStatistics _sprintStats = SprintStatistics.empty();
   List<ExerciseHistoryEntry> _exerciseHistory = [];
   bool _isLoading = true;
+
+  // Walk period filter
+  String _walkPeriod = 'week'; // 'week', 'month', 'year', 'all'
 
   @override
   void initState() {
@@ -43,13 +47,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     // Avoid setting state if not mounted
     if (!mounted) return;
     
-    // Don't set isLoading = true here to avoid flickering on every update
-    // setState(() => _isLoading = true); 
-    
     // Load Walks
     final walks = await _storageService.loadDailyWalks();
-    final walkStats = WalkStatistics.fromWalks(walks);
-
+    
     // Load Sprints
     final sprintStats = await _storageService.getSprintStatistics();
 
@@ -58,12 +58,47 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
 
     if (mounted) {
       setState(() {
-        _walkStats = walkStats;
+        _allWalks = walks;
+        _walkStats = _calculateWalkStats(walks, _walkPeriod);
         _sprintStats = sprintStats;
         _exerciseHistory = history;
         _isLoading = false;
       });
     }
+  }
+
+  WalkStatistics _calculateWalkStats(List<DailyWalk> walks, String period) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    DateTime? startDate;
+    switch (period) {
+      case 'week':
+        startDate = today.subtract(const Duration(days: 7));
+        break;
+      case 'month':
+        startDate = today.subtract(const Duration(days: 30));
+        break;
+      case 'year':
+        startDate = today.subtract(const Duration(days: 365));
+        break;
+      case 'all':
+      default:
+        startDate = null;
+    }
+
+    final filteredWalks = startDate != null
+        ? walks.where((w) => w.date.isAfter(startDate!)).toList()
+        : walks;
+
+    return WalkStatistics.fromWalks(filteredWalks, periodStart: startDate, periodEnd: today);
+  }
+
+  void _setWalkPeriod(String period) {
+    setState(() {
+      _walkPeriod = period;
+      _walkStats = _calculateWalkStats(_allWalks, period);
+    });
   }
 
   @override
@@ -94,16 +129,56 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   Widget _buildWalkStats() {
+    final settings = context.watch<SettingsProvider>().settings;
+    final useImperial = settings.useImperialUnits;
+
+    // Format distance based on units preference
+    final distanceValue = useImperial 
+        ? (_walkStats.totalDistanceKm * 0.621371) // km to miles
+        : _walkStats.totalDistanceKm;
+    final distanceUnit = useImperial ? 'mi' : 'km';
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildStatCard(
-          'Total Distance',
-          '${(_walkStats.totalSeconds / 3600).toStringAsFixed(1)} hours',
-          Icons.directions_walk,
-          Colors.blue,
+        // Period selector
+        _buildPeriodSelector(),
+        const SizedBox(height: 16),
+
+        // Total Time and Distance
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                'Total Time',
+                _walkStats.formattedTotalTime,
+                Icons.timer,
+                Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildStatCard(
+                'Total Distance',
+                '${distanceValue.toStringAsFixed(2)} $distanceUnit',
+                Icons.straighten,
+                Colors.teal,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
+
+        // Walks completed
+        _buildStatCard(
+          'Walks Completed',
+          '${_walkStats.completedDays}',
+          Icons.directions_walk,
+          Colors.green,
+        ),
+        const SizedBox(height: 16),
+
+        // Streaks
         Row(
           children: [
             Expanded(
@@ -125,21 +200,57 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             ),
           ],
         ),
-         const SizedBox(height: 16),
+        const SizedBox(height: 16),
+
+        // Average duration
         _buildStatCard(
-           'Completion Rate',
-           '${_walkStats.completionRate.toStringAsFixed(1)}%',
-           Icons.pie_chart,
-           Colors.purple,
+          'Average Duration',
+          _walkStats.formattedAverageTime,
+          Icons.speed,
+          Colors.purple,
         ),
-         const SizedBox(height: 16),
-         _buildStatCard(
-           'Average Duration',
-           _walkStats.formattedAverageTime,
-           Icons.timer,
-           Colors.green,
-         ),
       ],
+    );
+  }
+
+  Widget _buildPeriodSelector() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _buildPeriodButton('Week', 'week'),
+          _buildPeriodButton('Month', 'month'),
+          _buildPeriodButton('Year', 'year'),
+          _buildPeriodButton('All', 'all'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodButton(String label, String value) {
+    final isSelected = _walkPeriod == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _setWalkPeriod(value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
     );
   }
 

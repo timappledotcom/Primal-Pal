@@ -78,14 +78,12 @@ class NotificationService {
     return true;
   }
 
-  /// Schedule all daily exercise notifications at random times within active window
-  /// This should be called once per day (on app launch or via WorkManager)
-  /// Returns a list of ScheduledExercise objects for display purposes
+  /// Schedule daily session notifications and create exercise list
+  /// This schedules 2 reminders (morning & afternoon) and assigns exercises to sessions
   Future<List<ScheduledExercise>> scheduleDailyNotifications({
     required List<Exercise> availableExercises,
     required AppSettings settings,
   }) async {
-    if (!settings.notificationsEnabled) return [];
     if (availableExercises.isEmpty) return [];
 
     // Cancel existing notifications first
@@ -94,100 +92,126 @@ class NotificationService {
     final now = DateTime.now();
     final random = Random();
 
-    // Calculate active window bounds for today
-    final windowStart = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      settings.activeWindowStart.hour,
-      settings.activeWindowStart.minute,
-    );
-
-    final windowEnd = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      settings.activeWindowEnd.hour,
-      settings.activeWindowEnd.minute,
-    );
-
-    // Calculate midpoint and split counts
-    final totalDuration = windowEnd.difference(windowStart);
-    // If window is invalid (end before start), do nothing
-    if (totalDuration.isNegative) return [];
-
-    final midpoint =
-        windowStart.add(Duration(minutes: totalDuration.inMinutes ~/ 2));
-
-    // Add a small buffer around midpoint so they don't overlap too closely
-    // Only apply buffer if we have enough time (at least 2 hours)
-    final bufferMinutes = totalDuration.inHours >= 2 ? 15 : 0;
-
-    final morningEnd = midpoint.subtract(Duration(minutes: bufferMinutes));
-    final afternoonStart = midpoint.add(Duration(minutes: bufferMinutes));
-
     // Split the snacks count: half in morning, half in afternoon
     // If odd, morning gets one more
     final morningCount = (settings.snacksPerDay / 2).ceil();
     final afternoonCount = settings.snacksPerDay - morningCount;
 
-    final scheduleTimes = <DateTime>[];
-
-    // Generate random times for morning
-    if (morningCount > 0) {
-      scheduleTimes.addAll(_generateRandomTimes(
-        windowStart: windowStart,
-        windowEnd: morningEnd,
-        count: morningCount,
-        random: random,
-      ));
-    }
-
-    // Generate random times for afternoon
-    if (afternoonCount > 0) {
-      scheduleTimes.addAll(_generateRandomTimes(
-        windowStart: afternoonStart,
-        windowEnd: windowEnd,
-        count: afternoonCount,
-        random: random,
-      ));
-    }
-
-    // Filter out times that have already passed
-    final futureTimes =
-        scheduleTimes.where((time) => time.isAfter(now)).toList();
-
-    // Create a shuffled list of exercises to use (avoids repeats when possible)
-    final exercisesToSchedule = _selectExercisesForDay(
-      availableExercises: availableExercises,
-      count: futureTimes.length,
-      random: random,
-    );
+    // Create a shuffled list of exercises
+    final shuffled = List<Exercise>.from(availableExercises)..shuffle(random);
 
     // List to store scheduled exercises for return
     final scheduledExercises = <ScheduledExercise>[];
 
-    // Schedule notifications at each time
-    for (var i = 0; i < futureTimes.length; i++) {
-      final exercise = exercisesToSchedule[i];
-
-      await _scheduleNotification(
-        id: i,
-        exercise: exercise,
-        scheduledTime: futureTimes[i],
-      );
-
-      // Create ScheduledExercise for tracking
+    // Assign exercises to morning session
+    for (var i = 0; i < morningCount; i++) {
+      final exercise = shuffled[i % shuffled.length];
       scheduledExercises.add(ScheduledExercise(
         exerciseId: exercise.id,
         exerciseName: exercise.name,
-        scheduledTime: futureTimes[i],
+        scheduledTime: DateTime(
+          now.year,
+          now.month,
+          now.day,
+          settings.morningReminderTime.hour,
+          settings.morningReminderTime.minute,
+        ),
         notificationId: i,
+        session: 'morning',
       ));
     }
 
-    debugPrint('Scheduled ${futureTimes.length} notifications for today');
+    // Assign exercises to afternoon session
+    for (var i = 0; i < afternoonCount; i++) {
+      final exercise = shuffled[(morningCount + i) % shuffled.length];
+      scheduledExercises.add(ScheduledExercise(
+        exerciseId: exercise.id,
+        exerciseName: exercise.name,
+        scheduledTime: DateTime(
+          now.year,
+          now.month,
+          now.day,
+          settings.afternoonReminderTime.hour,
+          settings.afternoonReminderTime.minute,
+        ),
+        notificationId: morningCount + i,
+        session: 'afternoon',
+      ));
+    }
+
+    // Schedule session reminder notifications if enabled
+    if (settings.notificationsEnabled) {
+      final morningReminderTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        settings.morningReminderTime.hour,
+        settings.morningReminderTime.minute,
+      );
+
+      final afternoonReminderTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        settings.afternoonReminderTime.hour,
+        settings.afternoonReminderTime.minute,
+      );
+
+      // Schedule morning reminder if it's in the future
+      if (morningReminderTime.isAfter(now)) {
+        await _scheduleSessionReminder(
+          id: 100,
+          session: 'Morning',
+          exerciseCount: morningCount,
+          scheduledTime: morningReminderTime,
+        );
+      }
+
+      // Schedule afternoon reminder if it's in the future
+      if (afternoonReminderTime.isAfter(now)) {
+        await _scheduleSessionReminder(
+          id: 101,
+          session: 'Afternoon',
+          exerciseCount: afternoonCount,
+          scheduledTime: afternoonReminderTime,
+        );
+      }
+    }
+
+    debugPrint('Scheduled $morningCount morning + $afternoonCount afternoon exercises');
     return scheduledExercises;
+  }
+
+  /// Schedule a session reminder notification
+  Future<void> _scheduleSessionReminder({
+    required int id,
+    required String session,
+    required int exerciseCount,
+    required DateTime scheduledTime,
+  }) async {
+    final androidDetails = AndroidNotificationDetails(
+      'exercise_sessions',
+      'Exercise Sessions',
+      channelDescription: 'Reminders for exercise sessions',
+      importance: Importance.high,
+      priority: Priority.high,
+      ticker: 'Exercise time!',
+      icon: '@mipmap/ic_launcher',
+    );
+
+    final notificationDetails = NotificationDetails(android: androidDetails);
+
+    await _notifications.zonedSchedule(
+      id,
+      '🏋️ $session Session',
+      '$exerciseCount exercises ready to go!',
+      tz.TZDateTime.from(scheduledTime, tz.local),
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      payload: 'session_$session',
+    );
+
+    debugPrint('Scheduled $session session reminder at $scheduledTime');
   }
 
   /// Select exercises for the day, avoiding repeats when possible

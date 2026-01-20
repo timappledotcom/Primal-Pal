@@ -51,6 +51,13 @@ class SettingsScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
+              // Session Reminders
+              _buildSectionTitle(context, 'SESSION REMINDERS'),
+              const SizedBox(height: 12),
+              _buildReminderTimeSelector(context, provider, settings),
+
+              const SizedBox(height: 32),
+
               // Measurement Units
               _buildSectionTitle(context, 'UNITS'),
               const SizedBox(height: 12),
@@ -334,6 +341,61 @@ class SettingsScreen extends StatelessWidget {
     if (time != null) {
       onSelected(time);
     }
+  }
+
+  Widget _buildReminderTimeSelector(
+    BuildContext context,
+    SettingsProvider provider,
+    AppSettings settings,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.wb_sunny, color: Colors.orange),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTimeButton(
+                  context,
+                  'Morning Reminder',
+                  settings.morningReminderTime,
+                  () => _selectTime(
+                    context,
+                    settings.morningReminderTime,
+                    (time) => provider.setMorningReminderTime(time),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.nights_stay, color: Colors.blue),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTimeButton(
+                  context,
+                  'Afternoon Reminder',
+                  settings.afternoonReminderTime,
+                  () => _selectTime(
+                    context,
+                    settings.afternoonReminderTime,
+                    (time) => provider.setAfternoonReminderTime(time),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSnacksSelector(

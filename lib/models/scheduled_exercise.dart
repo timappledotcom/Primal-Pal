@@ -1,9 +1,11 @@
-/// Model class representing an exercise scheduled for a specific time
+/// Model class representing an exercise scheduled for a specific session
 class ScheduledExercise {
   final String exerciseId;
   final String exerciseName;
   final DateTime scheduledTime;
   final int notificationId;
+  /// Session: 'morning' or 'afternoon'
+  final String session;
   bool isSnoozed;
   DateTime? originalTime;
   bool isCompleted;
@@ -13,6 +15,7 @@ class ScheduledExercise {
     required this.exerciseName,
     required this.scheduledTime,
     required this.notificationId,
+    this.session = 'morning',
     this.isSnoozed = false,
     this.originalTime,
     this.isCompleted = false,
@@ -25,6 +28,7 @@ class ScheduledExercise {
       exerciseName: json['exerciseName'] as String,
       scheduledTime: DateTime.parse(json['scheduledTime'] as String),
       notificationId: json['notificationId'] as int,
+      session: json['session'] as String? ?? 'morning',
       isSnoozed: json['isSnoozed'] as bool? ?? false,
       originalTime: json['originalTime'] != null
           ? DateTime.parse(json['originalTime'] as String)
@@ -40,6 +44,7 @@ class ScheduledExercise {
       'exerciseName': exerciseName,
       'scheduledTime': scheduledTime.toIso8601String(),
       'notificationId': notificationId,
+      'session': session,
       'isSnoozed': isSnoozed,
       'originalTime': originalTime?.toIso8601String(),
       'isCompleted': isCompleted,
@@ -73,6 +78,7 @@ class ScheduledExercise {
       exerciseName: exerciseName,
       scheduledTime: DateTime.now().add(Duration(minutes: minutes)),
       notificationId: notificationId,
+      session: session,
       isSnoozed: true,
       originalTime: originalTime ?? scheduledTime,
       isCompleted: isCompleted,
@@ -86,6 +92,7 @@ class ScheduledExercise {
       exerciseName: exerciseName,
       scheduledTime: scheduledTime,
       notificationId: notificationId,
+      session: session,
       isSnoozed: isSnoozed,
       originalTime: originalTime,
       isCompleted: true,
