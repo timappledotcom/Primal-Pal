@@ -24,7 +24,8 @@ class DailyWalk {
   int get durationMinutes => (totalSeconds / 60).floor();
 
   /// Distance in kilometers formatted string
-  String get formattedDistance => '${(distanceMeters / 1000).toStringAsFixed(2)} km';
+  String get formattedDistance =>
+      '${(distanceMeters / 1000).toStringAsFixed(2)} km';
 
   /// Get the date without time component (for comparison)
   DateTime get dateOnly => DateTime(date.year, date.month, date.day);

@@ -2,6 +2,7 @@
 enum ExerciseType {
   strength,
   mobility,
+  taekwondo,
 }
 
 /// Extension to provide display names and JSON conversion for ExerciseType
@@ -12,6 +13,8 @@ extension ExerciseTypeExtension on ExerciseType {
         return 'Strength';
       case ExerciseType.mobility:
         return 'Mobility';
+      case ExerciseType.taekwondo:
+        return 'TaeKwonDo';
     }
   }
 
@@ -510,6 +513,179 @@ class ExerciseData {
         currentReps: 2, // Challenging - start low
         relatedStretch:
             'Lat Stretch: Hang from bar with relaxed shoulders, or reach arm overhead and lean to side.',
+      ),
+
+      // ===== TAEKWONDO EXERCISES =====
+      // Kicks - Done as reps on both sides
+      Exercise(
+        id: 'tkd_front_kick',
+        name: 'Front Kick',
+        description:
+            'A straight kick forward with the ball of the foot, targeting the midsection or face.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Standing Quad Stretch: Pull foot to glutes, hold 30 seconds each side.',
+      ),
+      Exercise(
+        id: 'tkd_side_kick',
+        name: 'Side Kick',
+        description:
+            'A powerful kick delivered with the heel to the side, targeting ribs or head.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Hip Flexor Stretch: Kneel on one knee, push hips forward. Hold 30 seconds each side.',
+      ),
+      Exercise(
+        id: 'tkd_round_kick',
+        name: 'Round Kick',
+        description:
+            'A circular kick using the instep to strike the ribs, head, or midsection.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Figure-4 Stretch: On back, ankle on knee, pull toward chest, hold 30 seconds.',
+      ),
+      Exercise(
+        id: 'tkd_axe_kick',
+        name: 'Axe Kick',
+        description:
+            'A high kick that descends like an axe, striking with the heel or blade of the foot.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Standing Hamstring Stretch: Foot on low surface, lean forward.',
+      ),
+      Exercise(
+        id: 'tkd_hook_kick',
+        name: 'Hook Kick',
+        description:
+            'A hooking motion with the heel to strike the side of the head or ribs.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Hip Circles: Standing on one leg, rotate hip in large circles.',
+      ),
+      Exercise(
+        id: 'tkd_inside_crescent_kick',
+        name: 'Inside Crescent Kick',
+        description:
+            'A sweeping kick from outside to inside using the inside edge of the foot.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Adductor Stretch: Wide stance, shift weight to one side, hold 30 seconds.',
+      ),
+      Exercise(
+        id: 'tkd_outside_crescent_kick',
+        name: 'Outside Crescent Kick',
+        description:
+            'A sweeping kick from inside to outside using the outside edge of the foot.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Hip Flexor Stretch: Kneel on one knee, push hips forward. Hold 30 seconds each side.',
+      ),
+
+      // Blocks - Done as reps on both sides
+      Exercise(
+        id: 'tkd_inner_forearm_block',
+        name: 'Inner Forearm Block',
+        description:
+            'A defensive block using the inner forearm to deflect attacks from outside to inside.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch: 'Wrist Circles: Rotate wrists 10 times each direction.',
+      ),
+      Exercise(
+        id: 'tkd_outer_forearm_block',
+        name: 'Outer Forearm Block',
+        description:
+            'A defensive block using the outer forearm to deflect attacks from inside to outside.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Cross-Body Shoulder Stretch: Pull arm across chest, hold 20 seconds each.',
+      ),
+      Exercise(
+        id: 'tkd_knife_hand_block',
+        name: 'Knife Hand Block',
+        description:
+            'A defensive block using the edge of the hand in a chopping motion to deflect strikes.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Wrist Flexion Stretch: Extend arm, pull fingers back gently.',
+      ),
+      Exercise(
+        id: 'tkd_low_block',
+        name: 'Low Block',
+        description:
+            'A downward block using the forearm to deflect low attacks toward the legs.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch:
+            'Shoulder Circles: Large circles forward and back, 10 each direction.',
+      ),
+      Exercise(
+        id: 'tkd_high_block',
+        name: 'High Block',
+        description:
+            'An upward block using the forearm to deflect high attacks toward the head.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingReps,
+        isBilateral: true,
+        relatedStretch: 'Tricep Stretch: Elbow overhead, push down gently.',
+      ),
+
+      // Stances - Timed, front and back done on each side
+      Exercise(
+        id: 'tkd_front_stance',
+        name: 'Front Stance',
+        description:
+            'A forward-facing stance with front knee bent and back leg straight, weight forward.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingSeconds,
+        isTimed: true,
+        isBilateral: true,
+        relatedStretch:
+            'Hip Flexor Stretch: Kneel on one knee, push hips forward. Hold 30 seconds each side.',
+      ),
+      Exercise(
+        id: 'tkd_back_stance',
+        name: 'Back Stance',
+        description:
+            'A defensive stance with weight on the back leg, front leg slightly bent.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingSeconds,
+        isTimed: true,
+        isBilateral: true,
+        relatedStretch:
+            'Standing Quad Stretch: Pull foot to glutes, hold 30 seconds each side.',
+      ),
+      Exercise(
+        id: 'tkd_horse_stance',
+        name: 'Horse Stance',
+        description:
+            'A wide, low stance with feet parallel and knees bent, building leg strength and balance.',
+        type: ExerciseType.taekwondo,
+        currentReps: defaultStartingSeconds,
+        isTimed: true,
+        isBilateral: true,
+        relatedStretch:
+            'Adductor Stretch: Wide stance, shift weight to one side, hold 30 seconds.',
       ),
     ];
   }

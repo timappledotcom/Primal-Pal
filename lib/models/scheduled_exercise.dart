@@ -4,6 +4,7 @@ class ScheduledExercise {
   final String exerciseName;
   final DateTime scheduledTime;
   final int notificationId;
+
   /// Session: 'morning' or 'afternoon'
   final String session;
   bool isSnoozed;

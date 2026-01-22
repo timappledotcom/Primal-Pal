@@ -84,8 +84,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
       for (int i = 0; i < exerciseList.length; i++) {
         if (!exerciseList[i].isCompleted) {
           // Check if we have a history entry for this exercise ID
-          final hasCompletion =
-              todaysHistory.any((h) => h.exerciseId == exerciseList[i].exerciseId);
+          final hasCompletion = todaysHistory
+              .any((h) => h.exerciseId == exerciseList[i].exerciseId);
           if (hasCompletion) {
             exerciseList[i] = exerciseList[i].markCompleted();
             changed = true;
@@ -139,23 +139,23 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
     final settings = context.watch<SettingsProvider>().settings;
 
     // Group by session field
-    final morningExercises = _scheduledExercises
-        .where((e) => e.session == 'morning')
-        .toList();
+    final morningExercises =
+        _scheduledExercises.where((e) => e.session == 'morning').toList();
 
-    final afternoonExercises = _scheduledExercises
-        .where((e) => e.session == 'afternoon')
-        .toList();
+    final afternoonExercises =
+        _scheduledExercises.where((e) => e.session == 'afternoon').toList();
 
     // Check completion status for each session
-    final morningComplete = morningExercises.isNotEmpty && 
+    final morningComplete = morningExercises.isNotEmpty &&
         morningExercises.every((e) => e.isCompleted);
-    final afternoonComplete = afternoonExercises.isNotEmpty && 
+    final afternoonComplete = afternoonExercises.isNotEmpty &&
         afternoonExercises.every((e) => e.isCompleted);
 
     // Count completed exercises
-    final morningCompletedCount = morningExercises.where((e) => e.isCompleted).length;
-    final afternoonCompletedCount = afternoonExercises.where((e) => e.isCompleted).length;
+    final morningCompletedCount =
+        morningExercises.where((e) => e.isCompleted).length;
+    final afternoonCompletedCount =
+        afternoonExercises.where((e) => e.isCompleted).length;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -169,7 +169,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
             completedCount: morningCompletedCount,
             totalCount: morningExercises.length,
             isExpanded: _morningExpanded,
-            onToggle: () => setState(() => _morningExpanded = !_morningExpanded),
+            onToggle: () =>
+                setState(() => _morningExpanded = !_morningExpanded),
             isMorning: true,
           ),
           if (_morningExpanded)
@@ -185,7 +186,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
             completedCount: afternoonCompletedCount,
             totalCount: afternoonExercises.length,
             isExpanded: _afternoonExpanded,
-            onToggle: () => setState(() => _afternoonExpanded = !_afternoonExpanded),
+            onToggle: () =>
+                setState(() => _afternoonExpanded = !_afternoonExpanded),
             isMorning: false,
           ),
           if (_afternoonExpanded)
@@ -207,9 +209,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
     required VoidCallback onToggle,
     required bool isMorning,
   }) {
-    final baseColor = isComplete 
-        ? Colors.green 
-        : (isMorning ? Colors.orange : Colors.blue);
+    final baseColor =
+        isComplete ? Colors.green : (isMorning ? Colors.orange : Colors.blue);
 
     return GestureDetector(
       onTap: onToggle,
@@ -223,8 +224,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
         child: Row(
           children: [
             Icon(
-              isComplete 
-                  ? Icons.check_circle 
+              isComplete
+                  ? Icons.check_circle
                   : (isMorning ? Icons.wb_sunny : Icons.nights_stay),
               color: Colors.white,
               size: 24,
@@ -243,8 +244,8 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
                     ),
                   ),
                   Text(
-                    isComplete 
-                        ? 'All $totalCount completed! ✓' 
+                    isComplete
+                        ? 'All $totalCount completed! ✓'
                         : '$completedCount/$totalCount done • Reminder ${reminderTime.format(context)}',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),

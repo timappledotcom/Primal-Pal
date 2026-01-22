@@ -126,6 +126,13 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggle TaeKwonDo exercises enabled/disabled
+  Future<void> setTaekwondoEnabled(bool enabled) async {
+    _settings = _settings.copyWith(taekwondoEnabled: enabled);
+    await _storageService.saveSettings(_settings);
+    notifyListeners();
+  }
+
   /// Toggle notifications enabled/disabled
   Future<void> toggleNotifications() async {
     _settings = _settings.copyWith(

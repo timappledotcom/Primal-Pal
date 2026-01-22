@@ -25,6 +25,9 @@ class AppSettings {
   /// Whether the user has seen the onboarding screen
   final bool hasSeenOnboarding;
 
+  /// Whether TaeKwonDo exercises are enabled
+  final bool taekwondoEnabled;
+
   /// Time for morning session reminder
   final TimeOfDay morningReminderTime;
 
@@ -39,6 +42,7 @@ class AppSettings {
     this.notificationsEnabled = true,
     this.useImperialUnits = false,
     this.hasSeenOnboarding = false,
+    this.taekwondoEnabled = false,
     this.morningReminderTime = const TimeOfDay(hour: 8, minute: 0),
     this.afternoonReminderTime = const TimeOfDay(hour: 13, minute: 0),
   });
@@ -47,13 +51,13 @@ class AppSettings {
   factory AppSettings.defaults() {
     return AppSettings(
       sportDays: {
-        DateTime.monday: false,    // Rest Day
-        DateTime.tuesday: true,    // Sport Day
+        DateTime.monday: false, // Rest Day
+        DateTime.tuesday: true, // Sport Day
         DateTime.wednesday: false, // Rest Day
-        DateTime.thursday: true,   // Sport Day
-        DateTime.friday: false,    // Rest Day
-        DateTime.saturday: true,   // Sport Day
-        DateTime.sunday: false,    // Rest Day
+        DateTime.thursday: true, // Sport Day
+        DateTime.friday: false, // Rest Day
+        DateTime.saturday: true, // Sport Day
+        DateTime.sunday: false, // Rest Day
       },
       activeWindowStart: const TimeOfDay(hour: 7, minute: 0),
       activeWindowEnd: const TimeOfDay(hour: 20, minute: 0),
@@ -61,6 +65,7 @@ class AppSettings {
       notificationsEnabled: true,
       useImperialUnits: false,
       hasSeenOnboarding: false,
+      taekwondoEnabled: false,
       morningReminderTime: const TimeOfDay(hour: 8, minute: 0),
       afternoonReminderTime: const TimeOfDay(hour: 13, minute: 0),
     );
@@ -133,6 +138,7 @@ class AppSettings {
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
       useImperialUnits: json['useImperialUnits'] as bool? ?? false,
       hasSeenOnboarding: json['hasSeenOnboarding'] as bool? ?? false,
+      taekwondoEnabled: json['taekwondoEnabled'] as bool? ?? false,
       morningReminderTime: TimeOfDay(
         hour: json['morningReminderHour'] as int? ?? 8,
         minute: json['morningReminderMinute'] as int? ?? 0,
@@ -162,6 +168,7 @@ class AppSettings {
       'notificationsEnabled': notificationsEnabled,
       'useImperialUnits': useImperialUnits,
       'hasSeenOnboarding': hasSeenOnboarding,
+      'taekwondoEnabled': taekwondoEnabled,
       'morningReminderHour': morningReminderTime.hour,
       'morningReminderMinute': morningReminderTime.minute,
       'afternoonReminderHour': afternoonReminderTime.hour,
@@ -178,6 +185,7 @@ class AppSettings {
     bool? notificationsEnabled,
     bool? useImperialUnits,
     bool? hasSeenOnboarding,
+    bool? taekwondoEnabled,
     TimeOfDay? morningReminderTime,
     TimeOfDay? afternoonReminderTime,
   }) {
@@ -189,8 +197,10 @@ class AppSettings {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       useImperialUnits: useImperialUnits ?? this.useImperialUnits,
       hasSeenOnboarding: hasSeenOnboarding ?? this.hasSeenOnboarding,
+      taekwondoEnabled: taekwondoEnabled ?? this.taekwondoEnabled,
       morningReminderTime: morningReminderTime ?? this.morningReminderTime,
-      afternoonReminderTime: afternoonReminderTime ?? this.afternoonReminderTime,
+      afternoonReminderTime:
+          afternoonReminderTime ?? this.afternoonReminderTime,
     );
   }
 
@@ -208,18 +218,18 @@ class AppSettings {
     final period = time.period == DayPeriod.am ? 'AM' : 'PM';
     return '$hour:$minute $period';
   }
-  
+
   /// Check if the given time is within the active window
   bool isInActiveWindow(TimeOfDay time) {
     final nowMinutes = time.hour * 60 + time.minute;
     final startMinutes = activeWindowStart.hour * 60 + activeWindowStart.minute;
     final endMinutes = activeWindowEnd.hour * 60 + activeWindowEnd.minute;
-    
+
     // Handle case where window spans midnight (though not typical for this app)
     if (endMinutes < startMinutes) {
-       return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
+      return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
     }
-    
+
     return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
   }
 

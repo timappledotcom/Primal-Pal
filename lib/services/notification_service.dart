@@ -178,7 +178,8 @@ class NotificationService {
       }
     }
 
-    debugPrint('Scheduled $morningCount morning + $afternoonCount afternoon exercises');
+    debugPrint(
+        'Scheduled $morningCount morning + $afternoonCount afternoon exercises');
     return scheduledExercises;
   }
 
@@ -212,86 +213,6 @@ class NotificationService {
     );
 
     debugPrint('Scheduled $session session reminder at $scheduledTime');
-  }
-
-  /// Select exercises for the day, avoiding repeats when possible
-  /// If count > available, exercises will repeat but be evenly distributed
-  List<Exercise> _selectExercisesForDay({
-    required List<Exercise> availableExercises,
-    required int count,
-    required Random random,
-  }) {
-    if (availableExercises.isEmpty) return [];
-
-    final result = <Exercise>[];
-
-    // Shuffle the available exercises to randomize order
-    final shuffled = List<Exercise>.from(availableExercises)..shuffle(random);
-
-    // Fill the result list, cycling through shuffled exercises if needed
-    for (var i = 0; i < count; i++) {
-      result.add(shuffled[i % shuffled.length]);
-    }
-
-    // Shuffle again so the order isn't predictable
-    result.shuffle(random);
-
-    return result;
-  }
-
-  /// Generate random times within the active window
-  List<DateTime> _generateRandomTimes({
-    required DateTime windowStart,
-    required DateTime windowEnd,
-    required int count,
-    required Random random,
-  }) {
-    final times = <DateTime>[];
-    final windowDurationMinutes = windowEnd.difference(windowStart).inMinutes;
-
-    // Minimum gap between notifications (in minutes)
-    const minGap = 30;
-
-    if (windowDurationMinutes < minGap * count) {
-      // Window too small for all notifications, distribute evenly
-      final interval = windowDurationMinutes ~/ count;
-      for (var i = 0; i < count; i++) {
-        times.add(
-            windowStart.add(Duration(minutes: interval * i + interval ~/ 2)));
-      }
-    } else {
-      // Generate random times with minimum gap
-      for (var i = 0; i < count; i++) {
-        DateTime newTime;
-        var attempts = 0;
-        const maxAttempts = 100;
-
-        do {
-          final randomMinutes = random.nextInt(windowDurationMinutes);
-          newTime = windowStart.add(Duration(minutes: randomMinutes));
-          attempts++;
-        } while (_isTooCloseToExisting(newTime, times, minGap) &&
-            attempts < maxAttempts);
-
-        times.add(newTime);
-      }
-    }
-
-    // Sort times chronologically
-    times.sort();
-    return times;
-  }
-
-  /// Check if a time is too close to existing scheduled times
-  bool _isTooCloseToExisting(
-      DateTime time, List<DateTime> existing, int minGapMinutes) {
-    for (final existingTime in existing) {
-      final diff = time.difference(existingTime).inMinutes.abs();
-      if (diff < minGapMinutes) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /// Schedule a single notification

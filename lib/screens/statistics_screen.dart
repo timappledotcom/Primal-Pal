@@ -11,7 +11,8 @@ class StatisticsScreen extends StatefulWidget {
   State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerProviderStateMixin {
+class _StatisticsScreenState extends State<StatisticsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final StorageService _storageService = StorageService();
 
@@ -46,10 +47,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   Future<void> _loadData() async {
     // Avoid setting state if not mounted
     if (!mounted) return;
-    
+
     // Load Walks
     final walks = await _storageService.loadDailyWalks();
-    
+
     // Load Sprints
     final sprintStats = await _storageService.getSprintStatistics();
 
@@ -70,7 +71,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   WalkStatistics _calculateWalkStats(List<DailyWalk> walks, String period) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     DateTime? startDate;
     switch (period) {
       case 'week':
@@ -91,7 +92,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         ? walks.where((w) => w.date.isAfter(startDate!)).toList()
         : walks;
 
-    return WalkStatistics.fromWalks(filteredWalks, periodStart: startDate, periodEnd: today);
+    return WalkStatistics.fromWalks(filteredWalks,
+        periodStart: startDate, periodEnd: today);
   }
 
   void _setWalkPeriod(String period) {
@@ -133,7 +135,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     final useImperial = settings.useImperialUnits;
 
     // Format distance based on units preference
-    final distanceValue = useImperial 
+    final distanceValue = useImperial
         ? (_walkStats.totalDistanceKm * 0.621371) // km to miles
         : _walkStats.totalDistanceKm;
     final distanceUnit = useImperial ? 'mi' : 'km';
@@ -238,14 +240,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+              color: isSelected
+                  ? Colors.white
+                  : Theme.of(context).colorScheme.onSurface,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -267,7 +273,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
         const SizedBox(height: 16),
         Row(
           children: [
-             Expanded(
+            Expanded(
               child: _buildStatCard(
                 'Total Completed',
                 '${_sprintStats.totalCompleted}',
@@ -286,13 +292,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
             ),
           ],
         ),
-         const SizedBox(height: 16),
-         _buildStatCard(
-           'Current Streak',
-           '${_sprintStats.currentStreak}',
-           Icons.local_fire_department,
-           Colors.orange,
-         ),
+        const SizedBox(height: 16),
+        _buildStatCard(
+          'Current Streak',
+          '${_sprintStats.currentStreak}',
+          Icons.local_fire_department,
+          Colors.orange,
+        ),
       ],
     );
   }
@@ -300,13 +306,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   Widget _buildExerciseStats() {
     // Process history data
     final totalCount = _exerciseHistory.length;
-    
+
     // Group by exercise name
     final Map<String, int> countsByName = {};
     for (var entry in _exerciseHistory) {
-      countsByName[entry.exerciseName] = (countsByName[entry.exerciseName] ?? 0) + 1;
+      countsByName[entry.exerciseName] =
+          (countsByName[entry.exerciseName] ?? 0) + 1;
     }
-    
+
     // Sort by count
     final sortedExercises = countsByName.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -315,58 +322,64 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     final now = DateTime.now();
     final oneWeekAgo = now.subtract(const Duration(days: 7));
     final oneMonthAgo = now.subtract(const Duration(days: 30));
-    
-    final lastWeekCount = _exerciseHistory.where((e) => e.completedAt.isAfter(oneWeekAgo)).length;
-    final lastMonthCount = _exerciseHistory.where((e) => e.completedAt.isAfter(oneMonthAgo)).length;
+
+    final lastWeekCount =
+        _exerciseHistory.where((e) => e.completedAt.isAfter(oneWeekAgo)).length;
+    final lastMonthCount = _exerciseHistory
+        .where((e) => e.completedAt.isAfter(oneMonthAgo))
+        .length;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Row(
-           children: [
-             Expanded(
-               child: _buildStatCard(
-                 'Total Completed',
-                 '$totalCount',
-                 Icons.numbers,
-                 Colors.blue,
-               ),
-             ),
-             const SizedBox(width: 16),
-             Expanded(
-               child: _buildStatCard(
-                 'Last 7 Days',
-                 '$lastWeekCount',
-                 Icons.calendar_view_week,
-                 Colors.green,
-               ),
-             ),
-           ],
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                'Total Completed',
+                '$totalCount',
+                Icons.numbers,
+                Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildStatCard(
+                'Last 7 Days',
+                '$lastWeekCount',
+                Icons.calendar_view_week,
+                Colors.green,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
-         _buildStatCard(
-           'Last 30 Days',
-           '$lastMonthCount',
-           Icons.calendar_month,
-           Colors.purple,
-         ),
+        _buildStatCard(
+          'Last 30 Days',
+          '$lastMonthCount',
+          Icons.calendar_month,
+          Colors.purple,
+        ),
         const SizedBox(height: 24),
-        Text('Most Frequent Exercises', style: Theme.of(context).textTheme.titleMedium),
+        Text('Most Frequent Exercises',
+            style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         if (sortedExercises.isEmpty)
-          const Text('No exercises completed yet.', style: TextStyle(color: Colors.grey))
+          const Text('No exercises completed yet.',
+              style: TextStyle(color: Colors.grey))
         else
           ...sortedExercises.map((e) => ListTile(
-            title: Text(e.key),
-            trailing: Chip(label: Text('${e.value}')),
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-          )),
+                title: Text(e.key),
+                trailing: Chip(label: Text('${e.value}')),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              )),
       ],
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Card(
       elevation: 2,
       child: Padding(

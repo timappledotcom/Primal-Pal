@@ -29,6 +29,10 @@ class ExerciseProvider extends ChangeNotifier {
   List<Exercise> get mobilityExercises =>
       _exercises.where((e) => e.type == ExerciseType.mobility).toList();
 
+  /// Get all TaeKwonDo exercises
+  List<Exercise> get taekwondoExercises =>
+      _exercises.where((e) => e.type == ExerciseType.taekwondo).toList();
+
   // ============ INITIALIZATION ============
 
   /// IDs of exercises that have been removed from the app
@@ -89,28 +93,85 @@ class ExerciseProvider extends ChangeNotifier {
   /// - Sport Day (true) → Mobility exercises only
   /// - Rest Day (false) → Strength exercises only
   /// - Only include enabled exercises
+  /// - If TaeKwonDo is enabled, mix regular and TaeKwonDo exercises
   List<Exercise> getAvailableExercisesForToday(AppSettings settings) {
     final isSportDay = settings.isTodaySportDay();
 
-    // Filter by day type
+    // Filter by day type (strength or mobility)
     final typeFilter =
         isSportDay ? ExerciseType.mobility : ExerciseType.strength;
 
-    return _exercises
+    final regularExercises = _exercises
         .where((exercise) => exercise.isEnabled)
         .where((exercise) => exercise.type == typeFilter)
         .toList();
+
+    // If TaeKwonDo is not enabled, return only regular exercises
+    if (!settings.taekwondoEnabled) {
+      return regularExercises;
+    }
+
+    // Get TaeKwonDo exercises
+    final taekwondoExercises = _exercises
+        .where((exercise) => exercise.isEnabled)
+        .where((exercise) => exercise.type == ExerciseType.taekwondo)
+        .toList();
+
+    // Mix them: half from regular, half from TaeKwonDo
+    // For example, if snacksPerDay = 8, we want 4 regular + 4 TaeKwonDo
+    final targetCount = settings.snacksPerDay;
+    final taekwondoCount = (targetCount / 2).floor();
+    final regularCount = targetCount - taekwondoCount;
+
+    // Shuffle both lists
+    regularExercises.shuffle();
+    taekwondoExercises.shuffle();
+
+    // Take the required number from each pool, cycling if needed
+    final result = <Exercise>[];
+
+    // Add regular exercises
+    for (var i = 0; i < regularCount; i++) {
+      if (regularExercises.isNotEmpty) {
+        result.add(regularExercises[i % regularExercises.length]);
+      }
+    }
+
+    // Add TaeKwonDo exercises
+    for (var i = 0; i < taekwondoCount; i++) {
+      if (taekwondoExercises.isNotEmpty) {
+        result.add(taekwondoExercises[i % taekwondoExercises.length]);
+      }
+    }
+
+    // Shuffle the final mix so they're interleaved
+    result.shuffle();
+
+    return result;
   }
 
   /// Get exercises for a specific day type (for testing/preview)
-  List<Exercise> getExercisesForDayType({required bool isSportDay}) {
+  List<Exercise> getExercisesForDayType(
+      {required bool isSportDay, bool includeTaekwondo = false}) {
     final typeFilter =
         isSportDay ? ExerciseType.mobility : ExerciseType.strength;
 
-    return _exercises
+    final regularExercises = _exercises
         .where((exercise) => exercise.isEnabled)
         .where((exercise) => exercise.type == typeFilter)
         .toList();
+
+    if (!includeTaekwondo) {
+      return regularExercises;
+    }
+
+    // Include TaeKwonDo exercises
+    final taekwondoExercises = _exercises
+        .where((exercise) => exercise.isEnabled)
+        .where((exercise) => exercise.type == ExerciseType.taekwondo)
+        .toList();
+
+    return [...regularExercises, ...taekwondoExercises];
   }
 
   /// Select a random exercise from available exercises for today
@@ -240,15 +301,15 @@ class ExerciseProvider extends ChangeNotifier {
       await _storageService.updateScheduledExercise(completedScheduled);
       await _storageService.logExerciseCompletion(completedScheduled);
     } else {
-       // Log ad-hoc exercise completion
-       final adhocCompletion = ScheduledExercise(
-         exerciseId: exercise.id,
-         exerciseName: exercise.name,
-         scheduledTime: DateTime.now(),
-         notificationId: 0,
-         isCompleted: true,
-       );
-       await _storageService.logExerciseCompletion(adhocCompletion);
+      // Log ad-hoc exercise completion
+      final adhocCompletion = ScheduledExercise(
+        exerciseId: exercise.id,
+        exerciseName: exercise.name,
+        scheduledTime: DateTime.now(),
+        notificationId: 0,
+        isCompleted: true,
+      );
+      await _storageService.logExerciseCompletion(adhocCompletion);
     }
 
     // Clear current exercise

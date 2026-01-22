@@ -65,6 +65,13 @@ class SettingsScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
+              // TaeKwonDo Option
+              _buildSectionTitle(context, 'TAEKWONDO'),
+              const SizedBox(height: 12),
+              _buildTaekwondoSelector(context, provider, settings),
+
+              const SizedBox(height: 32),
+
               // Exercise Management
               _buildSectionTitle(context, 'MANAGE EXERCISES'),
               const SizedBox(height: 12),
@@ -215,6 +222,27 @@ class SettingsScreen extends StatelessWidget {
         value: settings.useImperialUnits,
         activeThumbColor: Theme.of(context).colorScheme.primary,
         onChanged: (value) => provider.setUseImperialUnits(value),
+      ),
+    );
+  }
+
+  Widget _buildTaekwondoSelector(
+    BuildContext context,
+    SettingsProvider provider,
+    AppSettings settings,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: SwitchListTile(
+        title: const Text('Enable TaeKwonDo Exercises'),
+        subtitle: const Text('Mix martial arts moves with regular exercises'),
+        value: settings.taekwondoEnabled,
+        activeThumbColor: Theme.of(context).colorScheme.primary,
+        onChanged: (value) => provider.setTaekwondoEnabled(value),
       ),
     );
   }
