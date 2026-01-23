@@ -97,15 +97,43 @@ class NotificationService {
     final morningCount = (settings.snacksPerDay / 2).ceil();
     final afternoonCount = settings.snacksPerDay - morningCount;
 
-    // Create a shuffled list of exercises
-    final shuffled = List<Exercise>.from(availableExercises)..shuffle(random);
+    // Separate TaeKwonDo exercises from regular exercises
+    final taekwondoExercises = availableExercises
+        .where((e) => e.type == ExerciseType.taekwondo)
+        .toList()
+      ..shuffle(random);
+
+    final regularExercises = availableExercises
+        .where((e) => e.type != ExerciseType.taekwondo)
+        .toList()
+      ..shuffle(random);
 
     // List to store scheduled exercises for return
     final scheduledExercises = <ScheduledExercise>[];
 
-    // Assign exercises to morning session
+    // Distribute exercises: if TaeKwonDo is enabled, ensure 2 per session
+    final taekwondoPerSession = taekwondoExercises.length ~/ 2;
+
+    // Morning session
+    int morningTaekwondoCount = 0;
+    int morningRegularCount = 0;
+
     for (var i = 0; i < morningCount; i++) {
-      final exercise = shuffled[i % shuffled.length];
+      Exercise exercise;
+
+      // Add TaeKwonDo exercise if we haven't reached the limit and they're available
+      if (morningTaekwondoCount < taekwondoPerSession &&
+          morningTaekwondoCount < taekwondoExercises.length) {
+        exercise = taekwondoExercises[morningTaekwondoCount];
+        morningTaekwondoCount++;
+      } else if (morningRegularCount < regularExercises.length) {
+        exercise = regularExercises[morningRegularCount];
+        morningRegularCount++;
+      } else {
+        // Fallback: cycle through available exercises
+        exercise = availableExercises[i % availableExercises.length];
+      }
+
       scheduledExercises.add(ScheduledExercise(
         exerciseId: exercise.id,
         exerciseName: exercise.name,
@@ -121,9 +149,30 @@ class NotificationService {
       ));
     }
 
-    // Assign exercises to afternoon session
+    // Afternoon session
+    int afternoonTaekwondoCount = 0;
+    int afternoonRegularCount =
+        morningRegularCount; // Continue from where morning left off
+
     for (var i = 0; i < afternoonCount; i++) {
-      final exercise = shuffled[(morningCount + i) % shuffled.length];
+      Exercise exercise;
+
+      // Add TaeKwonDo exercise if we haven't reached the limit
+      if (afternoonTaekwondoCount < taekwondoPerSession &&
+          (morningTaekwondoCount + afternoonTaekwondoCount) <
+              taekwondoExercises.length) {
+        exercise =
+            taekwondoExercises[morningTaekwondoCount + afternoonTaekwondoCount];
+        afternoonTaekwondoCount++;
+      } else if (afternoonRegularCount < regularExercises.length) {
+        exercise = regularExercises[afternoonRegularCount];
+        afternoonRegularCount++;
+      } else {
+        // Fallback: cycle through available exercises
+        exercise =
+            availableExercises[(morningCount + i) % availableExercises.length];
+      }
+
       scheduledExercises.add(ScheduledExercise(
         exerciseId: exercise.id,
         exerciseName: exercise.name,
