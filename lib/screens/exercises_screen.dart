@@ -72,7 +72,7 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
     // Reconciliation: Check history for completions that missed the schedule update
     if (scheduled != null && scheduled.isNotEmpty) {
       final history = await _storageService.loadExerciseHistory();
-      final exerciseList = scheduled!; // Non-null assertion for the block
+      final exerciseList = scheduled; // Non-null assertion for the block
 
       final todaysHistory = history.where((h) {
         final hDate = DateTime(
@@ -124,6 +124,12 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refreshExercises,
+            tooltip: 'Reload exercises',
+          ),
+          IconButton(
+            icon: const Icon(Icons.shuffle),
+            onPressed: _repickExercises,
+            tooltip: 'Repick exercises',
           ),
         ],
       ),
@@ -133,6 +139,84 @@ class _ExercisesScreenState extends State<ExercisesScreen> {
               ? const Center(child: Text('No exercises scheduled for today.'))
               : _buildGroupedList(context),
     );
+  }
+
+  Future<void> _repickExercises() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Repick Exercises?'),
+        content: const Text(
+          'This will randomly select new exercises for today. Your current progress will be lost.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Repick'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final settingsProvider = context.read<SettingsProvider>();
+      final exerciseProvider = context.read<ExerciseProvider>();
+
+      // Get available exercises for today
+      final available = exerciseProvider
+          .getAvailableExercisesForToday(settingsProvider.settings);
+
+      if (available.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No exercises available to schedule'),
+            ),
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Reschedule with new random selection
+      final newScheduled =
+          await NotificationService().scheduleDailyNotifications(
+        availableExercises: available,
+        settings: settingsProvider.settings,
+      );
+
+      await _storageService.saveScheduledExercises(newScheduled);
+
+      if (mounted) {
+        setState(() {
+          _scheduledExercises = newScheduled;
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Exercises repicked successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error repicking exercises: $e')),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Widget _buildGroupedList(BuildContext context) {

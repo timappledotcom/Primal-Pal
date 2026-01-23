@@ -117,10 +117,10 @@ class ExerciseProvider extends ChangeNotifier {
         .where((exercise) => exercise.type == ExerciseType.taekwondo)
         .toList();
 
-    // Mix them: half from regular, half from TaeKwonDo
-    // For example, if snacksPerDay = 8, we want 4 regular + 4 TaeKwonDo
+    // Mix them: 4 TaeKwonDo exercises per day (2 morning + 2 afternoon), rest from regular
     final targetCount = settings.snacksPerDay;
-    final taekwondoCount = (targetCount / 2).floor();
+    final taekwondoCount =
+        4; // Always 4 TaeKwonDo exercises per day (2 per session)
     final regularCount = targetCount - taekwondoCount;
 
     // Shuffle both lists
